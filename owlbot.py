@@ -60,6 +60,20 @@ s.move(
 # Fixup files
 # ----------------------------------------------------------------------------
 
+s.replace(
+    ["noxfile.py"], r"[\"']google[\"']", '"bigquery_magics"',
+)
+
+
+s.replace(
+    ["noxfile.py"], "--cov=google", "--cov=bigquery_magics",
+)
+
+
+# Workaround for https://github.com/googleapis/synthtool/issues/1317
+s.replace(
+    ["noxfile.py"], r'extras = "\[\]"', 'extras = ""',
+)
 
 # ----------------------------------------------------------------------------
 # Samples templates
