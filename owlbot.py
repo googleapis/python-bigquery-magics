@@ -30,17 +30,18 @@ common = gcp.CommonTemplates()
 
 extras_by_python = {
     # Use a middle version of Python to test when no extras are installed.
-    "3.8": []
+    "3.11": []
 }
-extras = ["tqdm"]
+extras = ["bqstorage"]
 templated_files = common.py_library(
     unit_test_python_versions=["3.7", "3.8", "3.11", "3.12"],
-    system_test_python_versions=["3.8", "3.12"],
+    system_test_python_versions=["3.8", "3.11", "3.12"],
     cov_level=100,
     unit_test_extras=extras,
     unit_test_extras_by_python=extras_by_python,
     unit_test_external_dependencies=["google-cloud-testutils"],
     system_test_extras=extras,
+    system_test_extras_by_python=extras_by_python,
     intersphinx_dependencies={
         "pandas": "https://pandas.pydata.org/pandas-docs/stable/",
         "pydata-google-auth": "https://pydata-google-auth.readthedocs.io/en/latest/",
