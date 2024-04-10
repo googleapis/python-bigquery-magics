@@ -12,36 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from concurrent import futures
+import contextlib
 import copy
 import re
-from concurrent import futures
 from unittest import mock
 import warnings
 
+import IPython
+import IPython.terminal.interactiveshell as interactiveshell
+import IPython.testing.tools as tools
+import IPython.utils.io as io
 from google.api_core import exceptions
 import google.auth.credentials
-import pytest
-from tests.unit.helpers import make_connection
-from test_utils.imports import maybe_fail_import
-
 from google.cloud import bigquery
 from google.cloud.bigquery import exceptions as bq_exceptions
-from google.cloud.bigquery import job
-from google.cloud.bigquery import table
+from google.cloud.bigquery import job, table
+import google.cloud.bigquery._http
+import google.cloud.bigquery.exceptions
 from google.cloud.bigquery.retry import DEFAULT_TIMEOUT
+import pandas
+import pytest
+import test_utils.imports  # google-cloud-testutils
 
+import bigquery_magics
+import bigquery_magics.bigquery as magics
 
 try:
-    from google.cloud.bigquery.magics import magics
+    import google.cloud.bigquery_storage as bigquery_storage
 except ImportError:
-    magics = None
+    bigquery_storage = None
 
-bigquery_storage = pytest.importorskip("google.cloud.bigquery_storage")
-IPython = pytest.importorskip("IPython")
-interactiveshell = pytest.importorskip("IPython.terminal.interactiveshell")
-tools = pytest.importorskip("IPython.testing.tools")
-io = pytest.importorskip("IPython.utils.io")
-pandas = pytest.importorskip("pandas")
+
+def make_connection(*args):
+    # TODO(tswast): Remove this in favor of a mock google.cloud.bigquery.Client
+    # in tests.
+    conn = mock.create_autospec(google.cloud.bigquery._http.Connection, instance=True)
+    conn.api_request.side_effect = args
+    return conn
 
 
 @pytest.fixture(scope="session")
@@ -87,7 +95,7 @@ def missing_bq_storage():
             fromlist is not None and "bigquery_storage" in fromlist
         )
 
-    return maybe_fail_import(predicate=fail_if)
+    return test_utils.imports.maybe_fail_import(predicate=fail_if)
 
 
 @pytest.fixture(scope="session")
@@ -98,7 +106,7 @@ def missing_grpcio_lib():
         # NOTE: *very* simplified, assuming a straightforward absolute import
         return "gapic_v1" in name or (fromlist is not None and "gapic_v1" in fromlist)
 
-    return maybe_fail_import(predicate=fail_if)
+    return test_utils.imports.maybe_fail_import(predicate=fail_if)
 
 
 PROJECT_ID = "its-a-project-eh"
@@ -136,8 +144,8 @@ def test_context_with_default_credentials():
     """When Application Default Credentials are set, the context credentials
     will be created the first time it is called
     """
-    assert magics.context._credentials is None
-    assert magics.context._project is None
+    assert bigquery_magics.context._credentials is None
+    assert bigquery_magics.context._project is None
 
     project = "prahj-ekt"
     credentials_mock = mock.create_autospec(
@@ -147,20 +155,19 @@ def test_context_with_default_credentials():
         "google.auth.default", return_value=(credentials_mock, project)
     )
     with default_patch as default_mock:
-        assert magics.context.credentials is credentials_mock
-        assert magics.context.project == project
+        assert bigquery_magics.context.credentials is credentials_mock
+        assert bigquery_magics.context.project == project
 
     assert default_mock.call_count == 2
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_context_with_default_connection():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._credentials = None
-    magics.context._project = None
-    magics.context._connection = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._credentials = None
+    bigquery_magics.context._project = None
+    bigquery_magics.context._connection = None
 
     default_credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -193,6 +200,7 @@ def test_context_with_default_connection():
         path=f"/projects/{PROJECT_ID}/queries/{JOB_ID}",
         query_params=mock.ANY,
         timeout=mock.ANY,
+        headers=mock.ANY,
     )
     default_conn.api_request.assert_has_calls([begin_call, query_results_call])
 
@@ -207,23 +215,22 @@ def test_context_credentials_and_project_can_be_set_explicitly():
         "google.auth.default", return_value=(credentials_mock, project1)
     )
     with default_patch as default_mock:
-        magics.context.credentials = credentials_mock
-        magics.context.project = project2
+        bigquery_magics.context.credentials = credentials_mock
+        bigquery_magics.context.project = project2
 
-    assert magics.context.project == project2
-    assert magics.context.credentials is credentials_mock
+    assert bigquery_magics.context.project == project2
+    assert bigquery_magics.context.credentials is credentials_mock
     # default should not be called if credentials & project are explicitly set
     assert default_mock.call_count == 0
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_context_with_custom_connection():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
-    magics.context._credentials = None
-    context_conn = magics.context._connection = make_connection(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
+    bigquery_magics.context._credentials = None
+    context_conn = bigquery_magics.context._connection = make_connection(
         QUERY_RESOURCE, QUERY_RESULTS_RESOURCE
     )
 
@@ -257,12 +264,13 @@ def test_context_with_custom_connection():
         path=f"/projects/{PROJECT_ID}/queries/{JOB_ID}",
         query_params=mock.ANY,
         timeout=mock.ANY,
+        headers=mock.ANY,
     )
     context_conn.api_request.assert_has_calls([begin_call, query_results_call])
 
 
 def test__run_query():
-    magics.context._credentials = None
+    bigquery_magics.context._credentials = None
 
     job_id = "job_1234"
     sql = "SELECT 17"
@@ -272,9 +280,7 @@ def test__run_query():
         [table.Row((17,), {"num": 0})],
     ]
 
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
     with client_patch as client_mock, io.capture_output() as captured:
         client_mock().query(sql).result.side_effect = responses
         client_mock().query(sql).job_id = job_id
@@ -295,13 +301,11 @@ def test__run_query():
 
 
 def test__run_query_dry_run_without_errors_is_silent():
-    magics.context._credentials = None
+    bigquery_magics.context._credentials = None
 
     sql = "SELECT 17"
 
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
 
     job_config = job.QueryJobConfig()
     job_config.dry_run = True
@@ -372,28 +376,20 @@ def test__make_bqstorage_client_true_obsolete_dependency():
     )
 
     patcher = mock.patch(
-        "google.cloud.bigquery._versions_helpers.BQ_STORAGE_VERSIONS.try_import",
+        "bigquery_magics._versions_helpers.BQ_STORAGE_VERSIONS.try_import",
         side_effect=bq_exceptions.LegacyBigQueryStorageError(
             "google-cloud-bigquery-storage is outdated"
         ),
     )
-    with patcher, warnings.catch_warnings(record=True) as warned:
-        got = magics._make_bqstorage_client(test_client, True, {})
-
-    assert got is None
-
-    matching_warnings = [
-        warning
-        for warning in warned
-        if "google-cloud-bigquery-storage is outdated" in str(warning)
-    ]
-    assert matching_warnings, "Obsolete dependency warning not raised."
+    with patcher, pytest.raises(
+        google.cloud.bigquery.exceptions.LegacyBigQueryStorageError
+    ):
+        magics._make_bqstorage_client(test_client, True, {})
 
 
 @pytest.mark.skipif(
     bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
 )
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test__make_bqstorage_client_true_missing_gapic(missing_grpcio_lib):
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -410,9 +406,7 @@ def test__create_dataset_if_necessary_exists():
     dataset_id = "dataset_id"
     dataset_reference = bigquery.dataset.DatasetReference(project, dataset_id)
     dataset = bigquery.Dataset(dataset_reference)
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
     with client_patch as client_mock:
         client = client_mock()
         client.project = project
@@ -424,9 +418,7 @@ def test__create_dataset_if_necessary_exists():
 def test__create_dataset_if_necessary_not_exist():
     project = "project_id"
     dataset_id = "dataset_id"
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
     with client_patch as client_mock:
         client = client_mock()
         client.location = "us"
@@ -439,28 +431,27 @@ def test__create_dataset_if_necessary_not_exist():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_extension_load():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
 
     # verify that the magic is registered and has the correct source
     magic = ip.magics_manager.magics["cell"].get("bigquery")
-    assert magic.__module__ == "google.cloud.bigquery.magics.magics"
+    assert magic.__module__ == "bigquery_magics.bigquery"
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 @pytest.mark.skipif(
     bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
 )
 def test_bigquery_magic_without_optional_arguments(monkeypatch):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     mock_credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     # Set up the context with monkeypatch so that it's reset for subsequent
     # tests.
-    monkeypatch.setattr(magics.context, "_credentials", mock_credentials)
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
 
     # Mock out the BigQuery Storage API.
     bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
@@ -475,9 +466,7 @@ def test_bigquery_magic_without_optional_arguments(monkeypatch):
 
     sql = "SELECT 17 AS num"
     result = pandas.DataFrame([17], columns=["num"])
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -496,8 +485,8 @@ def test_bigquery_magic_without_optional_arguments(monkeypatch):
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_default_connection_user_agent():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._connection = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -505,9 +494,7 @@ def test_bigquery_magic_default_connection_user_agent():
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
 
     with conn_patch as conn, run_query_patch, default_patch:
@@ -521,14 +508,12 @@ def test_bigquery_magic_default_connection_user_agent():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_legacy_sql():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic("bigquery", "--use_legacy_sql", "SELECT 17 AS num")
 
@@ -537,11 +522,10 @@ def test_bigquery_magic_with_legacy_sql():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_result_saved_to_variable(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -551,9 +535,7 @@ def test_bigquery_magic_with_result_saved_to_variable(ipython_ns_cleanup):
     result = pandas.DataFrame([17], columns=["num"])
     assert "df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -573,18 +555,16 @@ def test_bigquery_magic_with_result_saved_to_variable(ipython_ns_cleanup):
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_does_not_clear_display_in_verbose_mode():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     clear_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.display.clear_output",
+        "bigquery_magics.bigquery.display.clear_output",
         autospec=True,
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with clear_patch as clear_mock, run_query_patch:
         ip.run_cell_magic("bigquery", "--verbose", "SELECT 17 as num")
 
@@ -594,18 +574,16 @@ def test_bigquery_magic_does_not_clear_display_in_verbose_mode():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_clears_display_in_non_verbose_mode():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     clear_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.display.clear_output",
+        "bigquery_magics.bigquery.display.clear_output",
         autospec=True,
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with clear_patch as clear_mock, run_query_patch:
         ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
 
@@ -618,14 +596,14 @@ def test_bigquery_magic_clears_display_in_non_verbose_mode():
 )
 def test_bigquery_magic_with_bqstorage_from_argument(monkeypatch):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     mock_credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     # Set up the context with monkeypatch so that it's reset for subsequent
     # tests.
-    monkeypatch.setattr(magics.context, "_credentials", mock_credentials)
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
 
     # Mock out the BigQuery Storage API.
     bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
@@ -640,9 +618,7 @@ def test_bigquery_magic_with_bqstorage_from_argument(monkeypatch):
 
     sql = "SELECT 17 AS num"
     result = pandas.DataFrame([17], columns=["num"])
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -686,14 +662,14 @@ def test_bigquery_magic_with_rest_client_requested(monkeypatch):
     pandas = pytest.importorskip("pandas")
 
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     mock_credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     # Set up the context with monkeypatch so that it's reset for subsequent
     # tests.
-    monkeypatch.setattr(magics.context, "_credentials", mock_credentials)
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
 
     # Mock out the BigQuery Storage API.
     bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
@@ -703,9 +679,7 @@ def test_bigquery_magic_with_rest_client_requested(monkeypatch):
 
     sql = "SELECT 17 AS num"
     result = pandas.DataFrame([17], columns=["num"])
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -728,8 +702,8 @@ def test_bigquery_magic_with_rest_client_requested(monkeypatch):
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_max_results_invalid():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -750,8 +724,8 @@ def test_bigquery_magic_w_max_results_invalid():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_max_results_valid_calls_queryjob_result():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -784,8 +758,8 @@ def test_bigquery_magic_w_max_results_valid_calls_queryjob_result():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_max_results_query_job_results_fails():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -797,7 +771,7 @@ def test_bigquery_magic_w_max_results_query_job_results_fails():
         "google.cloud.bigquery.client.Client.query", autospec=True
     )
     close_transports_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._close_transports",
+        "bigquery_magics.bigquery._close_transports",
         autospec=True,
     )
 
@@ -821,8 +795,8 @@ def test_bigquery_magic_w_max_results_query_job_results_fails():
 
 def test_bigquery_magic_w_table_id_invalid():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -832,7 +806,7 @@ def test_bigquery_magic_w_table_id_invalid():
     )
 
     list_rows_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client.list_rows",
+        "bigquery_magics.bigquery.bigquery.Client.list_rows",
         autospec=True,
         side_effect=exceptions.BadRequest("Not a valid table ID"),
     )
@@ -850,8 +824,8 @@ def test_bigquery_magic_w_table_id_invalid():
 
 def test_bigquery_magic_w_missing_query():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -872,11 +846,10 @@ def test_bigquery_magic_w_missing_query():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_table_id_and_destination_var(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     ipython_ns_cleanup.append((ip, "df"))
 
@@ -891,9 +864,7 @@ def test_bigquery_magic_w_table_id_and_destination_var(ipython_ns_cleanup):
         google.cloud.bigquery.table.RowIterator, instance=True
     )
 
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
 
     table_id = "bigquery-public-data.samples.shakespeare"
     result = pandas.DataFrame([17], columns=["num"])
@@ -914,11 +885,10 @@ def test_bigquery_magic_w_table_id_and_destination_var(ipython_ns_cleanup):
 @pytest.mark.skipif(
     bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
 )
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_table_id_and_bqstorage_client():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -931,9 +901,7 @@ def test_bigquery_magic_w_table_id_and_bqstorage_client():
         google.cloud.bigquery.table.RowIterator, instance=True
     )
 
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
 
     bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
     bqstorage_instance_mock = mock.create_autospec(
@@ -961,14 +929,12 @@ def test_bigquery_magic_w_table_id_and_bqstorage_client():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_dryrun_option_sets_job_config():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     sql = "SELECT 17 AS num"
 
@@ -982,16 +948,14 @@ def test_bigquery_magic_dryrun_option_sets_job_config():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_dryrun_option_returns_query_job():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     sql = "SELECT 17 AS num"
 
@@ -1006,15 +970,15 @@ def test_bigquery_magic_dryrun_option_returns_query_job():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_dryrun_option_variable_error_message(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     ipython_ns_cleanup.append((ip, "q_job"))
 
     run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query",
+        "bigquery_magics.bigquery._run_query",
         autospec=True,
         side_effect=exceptions.BadRequest("Syntax error in SQL query"),
     )
@@ -1033,16 +997,14 @@ def test_bigquery_magic_dryrun_option_variable_error_message(ipython_ns_cleanup)
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_dryrun_option_saves_query_job_to_variable(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     ipython_ns_cleanup.append((ip, "q_job"))
 
@@ -1063,8 +1025,8 @@ def test_bigquery_magic_dryrun_option_saves_query_job_to_variable(ipython_ns_cle
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_saves_query_job_to_variable_on_error(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1096,8 +1058,8 @@ def test_bigquery_magic_saves_query_job_to_variable_on_error(ipython_ns_cleanup)
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_maximum_bytes_billed_invalid():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1117,14 +1079,13 @@ def test_bigquery_magic_w_maximum_bytes_billed_invalid():
     "param_value,expected", [("987654321", "987654321"), ("None", "0")]
 )
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_maximum_bytes_billed_overrides_context(param_value, expected):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     # Set the default maximum bytes billed, so we know it's overridable by the param.
-    magics.context.default_query_job_config.maximum_bytes_billed = 1234567
+    bigquery_magics.context.default_query_job_config.maximum_bytes_billed = 1234567
 
     project = "test-project"
     job_reference = copy.deepcopy(JOB_REFERENCE_RESOURCE)
@@ -1141,7 +1102,9 @@ def test_bigquery_magic_w_maximum_bytes_billed_overrides_context(param_value, ex
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    conn = magics.context._connection = make_connection(resource, query_results, data)
+    conn = bigquery_magics.context._connection = make_connection(
+        resource, query_results, data
+    )
     list_rows_patch = mock.patch(
         "google.cloud.bigquery.client.Client._list_rows_from_query_results",
         return_value=google.cloud.bigquery.table._EmptyRowIterator(),
@@ -1157,13 +1120,12 @@ def test_bigquery_magic_w_maximum_bytes_billed_overrides_context(param_value, ex
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_maximum_bytes_billed_w_context_inplace():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
-    magics.context.default_query_job_config.maximum_bytes_billed = 1337
+    bigquery_magics.context.default_query_job_config.maximum_bytes_billed = 1337
 
     project = "test-project"
     job_reference = copy.deepcopy(JOB_REFERENCE_RESOURCE)
@@ -1180,7 +1142,9 @@ def test_bigquery_magic_w_maximum_bytes_billed_w_context_inplace():
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    conn = magics.context._connection = make_connection(resource, query_results, data)
+    conn = bigquery_magics.context._connection = make_connection(
+        resource, query_results, data
+    )
     list_rows_patch = mock.patch(
         "google.cloud.bigquery.client.Client._list_rows_from_query_results",
         return_value=google.cloud.bigquery.table._EmptyRowIterator(),
@@ -1194,13 +1158,12 @@ def test_bigquery_magic_w_maximum_bytes_billed_w_context_inplace():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_maximum_bytes_billed_w_context_setter():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
-    magics.context.default_query_job_config = job.QueryJobConfig(
+    bigquery_magics.context.default_query_job_config = job.QueryJobConfig(
         maximum_bytes_billed=10203
     )
 
@@ -1219,7 +1182,9 @@ def test_bigquery_magic_w_maximum_bytes_billed_w_context_setter():
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    conn = magics.context._connection = make_connection(resource, query_results, data)
+    conn = bigquery_magics.context._connection = make_connection(
+        resource, query_results, data
+    )
     list_rows_patch = mock.patch(
         "google.cloud.bigquery.client.Client._list_rows_from_query_results",
         return_value=google.cloud.bigquery.table._EmptyRowIterator(),
@@ -1233,17 +1198,16 @@ def test_bigquery_magic_w_maximum_bytes_billed_w_context_setter():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_no_query_cache(monkeypatch):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     conn = make_connection()
-    monkeypatch.setattr(magics.context, "_connection", conn)
-    monkeypatch.setattr(magics.context, "project", "project-from-context")
+    monkeypatch.setattr(bigquery_magics.context, "_connection", conn)
+    monkeypatch.setattr(bigquery_magics.context, "project", "project-from-context")
 
     # --no_query_cache option should override context.
     monkeypatch.setattr(
-        magics.context.default_query_job_config, "use_query_cache", True
+        bigquery_magics.context.default_query_job_config, "use_query_cache", True
     )
 
     ip.run_cell_magic("bigquery", "--no_query_cache", QUERY_STRING)
@@ -1263,15 +1227,14 @@ def test_bigquery_magic_with_no_query_cache(monkeypatch):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_context_with_no_query_cache_from_context(monkeypatch):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     conn = make_connection()
-    monkeypatch.setattr(magics.context, "_connection", conn)
-    monkeypatch.setattr(magics.context, "project", "project-from-context")
+    monkeypatch.setattr(bigquery_magics.context, "_connection", conn)
+    monkeypatch.setattr(bigquery_magics.context, "project", "project-from-context")
     monkeypatch.setattr(
-        magics.context.default_query_job_config, "use_query_cache", False
+        bigquery_magics.context.default_query_job_config, "use_query_cache", False
     )
 
     ip.run_cell_magic("bigquery", "", QUERY_STRING)
@@ -1291,13 +1254,12 @@ def test_context_with_no_query_cache_from_context(monkeypatch):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
-    magics.context.progress_bar_type = "tqdm_gui"
+    bigquery_magics.context.progress_bar_type = "tqdm_gui"
 
     mock_credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1305,19 +1267,21 @@ def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
 
     # Set up the context with monkeypatch so that it's reset for subsequent
     # tests.
-    monkeypatch.setattr(magics.context, "_credentials", mock_credentials)
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
 
     # Mock out the BigQuery Storage API.
-    bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
-    bqstorage_client_patch = mock.patch(
-        "google.cloud.bigquery_storage.BigQueryReadClient", bqstorage_mock
-    )
+    if bigquery_storage is not None:
+        bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
+        bqstorage_client_patch = mock.patch(
+            "google.cloud.bigquery_storage.BigQueryReadClient", bqstorage_mock
+        )
+    else:
+        bqstorage_mock = mock.MagicMock()
+        bqstorage_client_patch = contextlib.nullcontext()
 
     sql = "SELECT 17 AS num"
     result = pandas.DataFrame([17], columns=["num"])
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1331,7 +1295,7 @@ def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
         query_job_mock.to_dataframe.assert_called_once_with(
             bqstorage_client=None,
             create_bqstorage_client=False,
-            progress_bar_type=magics.context.progress_bar_type,
+            progress_bar_type=bigquery_magics.context.progress_bar_type,
         )
 
     assert isinstance(return_value, pandas.DataFrame)
@@ -1340,12 +1304,10 @@ def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_progress_bar_type():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.progress_bar_type = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.progress_bar_type = None
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic(
             "bigquery", "--progress_bar_type=tqdm_gui", "SELECT 17 as num"
@@ -1354,14 +1316,14 @@ def test_bigquery_magic_with_progress_bar_type():
         progress_bar_used = run_query_mock.mock_calls[1][2]["progress_bar_type"]
         assert progress_bar_used == "tqdm_gui"
         # context progress bar type should not change
-        assert magics.context.progress_bar_type is None
+        assert bigquery_magics.context.progress_bar_type is None
 
 
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_project():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1369,27 +1331,23 @@ def test_bigquery_magic_with_project():
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock, default_patch:
         ip.run_cell_magic("bigquery", "--project=specific-project", "SELECT 17 as num")
 
         client_used = run_query_mock.call_args_list[0][0][0]
         assert client_used.project == "specific-project"
         # context project should not change
-        assert magics.context.project == "general-project"
+        assert bigquery_magics.context.project == "general-project"
 
 
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_bigquery_api_endpoint(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._connection = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic(
             "bigquery",
@@ -1400,19 +1358,17 @@ def test_bigquery_magic_with_bigquery_api_endpoint(ipython_ns_cleanup):
     connection_used = run_query_mock.call_args_list[0][0][0]._connection
     assert connection_used.API_BASE_URL == "https://bigquery_api.endpoint.com"
     # context client options should not change
-    assert magics.context.bigquery_client_options.api_endpoint is None
+    assert bigquery_magics.context.bigquery_client_options.api_endpoint is None
 
 
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_bigquery_api_endpoint_context_dict():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._connection = None
-    magics.context.bigquery_client_options = {}
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+    bigquery_magics.context.bigquery_client_options = {}
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic(
             "bigquery",
@@ -1423,18 +1379,19 @@ def test_bigquery_magic_with_bigquery_api_endpoint_context_dict():
     connection_used = run_query_mock.call_args_list[0][0][0]._connection
     assert connection_used.API_BASE_URL == "https://bigquery_api.endpoint.com"
     # context client options should not change
-    assert magics.context.bigquery_client_options == {}
+    assert bigquery_magics.context.bigquery_client_options == {}
 
 
 @pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.skipif(
+    bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
+)
 def test_bigquery_magic_with_bqstorage_api_endpoint(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._connection = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic(
             "bigquery",
@@ -1445,19 +1402,20 @@ def test_bigquery_magic_with_bqstorage_api_endpoint(ipython_ns_cleanup):
     client_used = run_query_mock.mock_calls[1][2]["bqstorage_client"]
     assert client_used._transport._host == "https://bqstorage_api.endpoint.com"
     # context client options should not change
-    assert magics.context.bqstorage_client_options.api_endpoint is None
+    assert bigquery_magics.context.bqstorage_client_options.api_endpoint is None
 
 
 @pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.skipif(
+    bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
+)
 def test_bigquery_magic_with_bqstorage_api_endpoint_context_dict():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._connection = None
-    magics.context.bqstorage_client_options = {}
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+    bigquery_magics.context.bqstorage_client_options = {}
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic(
             "bigquery",
@@ -1468,14 +1426,14 @@ def test_bigquery_magic_with_bqstorage_api_endpoint_context_dict():
     client_used = run_query_mock.mock_calls[1][2]["bqstorage_client"]
     assert client_used._transport._host == "https://bqstorage_api.endpoint.com"
     # context client options should not change
-    assert magics.context.bqstorage_client_options == {}
+    assert bigquery_magics.context.bqstorage_client_options == {}
 
 
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_multiple_options():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1483,9 +1441,7 @@ def test_bigquery_magic_with_multiple_options():
     default_patch = mock.patch(
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock, default_patch:
         ip.run_cell_magic(
             "bigquery",
@@ -1503,11 +1459,10 @@ def test_bigquery_magic_with_multiple_options():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_string_params(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1518,9 +1473,7 @@ def test_bigquery_magic_with_string_params(ipython_ns_cleanup):
 
     assert "params_dict_df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1540,11 +1493,10 @@ def test_bigquery_magic_with_string_params(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1557,9 +1509,7 @@ def test_bigquery_magic_with_dict_params(ipython_ns_cleanup):
 
     assert "params_dict_df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1584,11 +1534,10 @@ def test_bigquery_magic_with_dict_params(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_nonexisting():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1599,11 +1548,10 @@ def test_bigquery_magic_with_dict_params_nonexisting():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_incorrect_syntax():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1615,11 +1563,10 @@ def test_bigquery_magic_with_dict_params_incorrect_syntax():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_duplicate():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1633,11 +1580,10 @@ def test_bigquery_magic_with_dict_params_duplicate():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_option_value_incorrect():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1649,11 +1595,10 @@ def test_bigquery_magic_with_option_value_incorrect():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_negative_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1664,9 +1609,7 @@ def test_bigquery_magic_with_dict_params_negative_value(ipython_ns_cleanup):
 
     assert "params_dict_df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1689,11 +1632,10 @@ def test_bigquery_magic_with_dict_params_negative_value(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_array_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1704,9 +1646,7 @@ def test_bigquery_magic_with_dict_params_array_value(ipython_ns_cleanup):
 
     assert "params_dict_df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1729,11 +1669,10 @@ def test_bigquery_magic_with_dict_params_array_value(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_dict_params_tuple_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1744,9 +1683,7 @@ def test_bigquery_magic_with_dict_params_tuple_value(ipython_ns_cleanup):
 
     assert "params_dict_df" not in ip.user_ns
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1769,11 +1706,10 @@ def test_bigquery_magic_with_dict_params_tuple_value(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_improperly_formatted_params():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1787,20 +1723,17 @@ def test_bigquery_magic_with_improperly_formatted_params():
     "raw_sql", ("SELECT answer AS 42", " \t   SELECT answer AS 42  \t  ")
 )
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_valid_query_in_existing_variable(ipython_ns_cleanup, raw_sql):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     ipython_ns_cleanup.append((ip, "custom_query"))
     ipython_ns_cleanup.append((ip, "query_results_df"))
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     query_job_mock = mock.create_autospec(
         google.cloud.bigquery.job.QueryJob, instance=True
     )
@@ -1826,17 +1759,14 @@ def test_bigquery_magic_valid_query_in_existing_variable(ipython_ns_cleanup, raw
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_nonexisting_query_variable():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     ip.user_ns.pop("custom_query", None)  # Make sure the variable does NOT exist.
     cell_body = "$custom_query"  # Referring to a non-existing variable name.
@@ -1850,17 +1780,14 @@ def test_bigquery_magic_nonexisting_query_variable():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_empty_query_variable_name():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     cell_body = "$"  # Not referring to any variable (name omitted).
 
     with pytest.raises(
@@ -1872,17 +1799,14 @@ def test_bigquery_magic_empty_query_variable_name():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_query_variable_non_string(ipython_ns_cleanup):
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     ipython_ns_cleanup.append((ip, "custom_query"))
 
@@ -1898,11 +1822,10 @@ def test_bigquery_magic_query_variable_non_string(ipython_ns_cleanup):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_query_variable_not_identifier():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1921,11 +1844,10 @@ def test_bigquery_magic_query_variable_not_identifier():
 
 
 @pytest.mark.usefixtures("ipython_interactive")
-@pytest.mark.skipif(pandas is None, reason="Requires `pandas`")
 def test_bigquery_magic_with_invalid_multiple_option_values():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
@@ -1941,7 +1863,7 @@ def test_bigquery_magic_with_invalid_multiple_option_values():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_omits_tracebacks_from_error_message():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1951,7 +1873,7 @@ def test_bigquery_magic_omits_tracebacks_from_error_message():
     )
 
     run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query",
+        "bigquery_magics.bigquery._run_query",
         autospec=True,
         side_effect=exceptions.BadRequest("Syntax error in SQL query"),
     )
@@ -1968,8 +1890,8 @@ def test_bigquery_magic_omits_tracebacks_from_error_message():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_destination_table_invalid_format():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context._project = None
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
 
     credentials_mock = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
@@ -1978,9 +1900,7 @@ def test_bigquery_magic_w_destination_table_invalid_format():
         "google.auth.default", return_value=(credentials_mock, "general-project")
     )
 
-    client_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics.bigquery.Client", autospec=True
-    )
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
 
     with client_patch, default_patch, pytest.raises(ValueError) as exc_context:
         ip.run_cell_magic(
@@ -1996,19 +1916,17 @@ def test_bigquery_magic_w_destination_table_invalid_format():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_w_destination_table():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     create_dataset_if_necessary_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._create_dataset_if_necessary",
+        "bigquery_magics.bigquery._create_dataset_if_necessary",
         autospec=True,
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
     with create_dataset_if_necessary_patch, run_query_patch as run_query_mock:
         ip.run_cell_magic(
@@ -2028,18 +1946,18 @@ def test_bigquery_magic_w_destination_table():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_create_dataset_fails():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
     create_dataset_if_necessary_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._create_dataset_if_necessary",
+        "bigquery_magics.bigquery._create_dataset_if_necessary",
         autospec=True,
         side_effect=OSError,
     )
     close_transports_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._close_transports",
+        "bigquery_magics.bigquery._close_transports",
         autospec=True,
     )
 
@@ -2058,14 +1976,12 @@ def test_bigquery_magic_create_dataset_fails():
 @pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_with_location():
     ip = IPython.get_ipython()
-    ip.extension_manager.load_extension("google.cloud.bigquery")
-    magics.context.credentials = mock.create_autospec(
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context.credentials = mock.create_autospec(
         google.auth.credentials.Credentials, instance=True
     )
 
-    run_query_patch = mock.patch(
-        "google.cloud.bigquery.magics.magics._run_query", autospec=True
-    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
         ip.run_cell_magic("bigquery", "--location=us-east1", "SELECT 17 AS num")
 

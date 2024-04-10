@@ -16,9 +16,8 @@
 
 import re
 
-import pytest
 import psutil
-
+import pytest
 
 IPython = pytest.importorskip("IPython")
 io = pytest.importorskip("IPython.utils.io")
@@ -50,7 +49,7 @@ def test_bigquery_magic(ipython_interactive):
     current_process = psutil.Process()
     conn_count_start = len(current_process.connections())
 
-    ip.extension_manager.load_extension("google.cloud.bigquery")
+    ip.extension_manager.load_extension("bigquery_magics")
     sql = """
         SELECT
             CONCAT(

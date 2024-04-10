@@ -17,7 +17,6 @@ import os
 
 import setuptools
 
-
 # Package metadata.
 
 name = "bigquery-magics"
@@ -30,14 +29,31 @@ description = "Google BigQuery magics for Jupyter and IPython"
 release_status = "Development Status :: 4 - Beta"
 dependencies = [
     "db-dtypes>=0.3.0,<2.0.0dev",
-    "google-cloud-bigquery >= 3.0.0, <4.0.0dev",
+    "google-cloud-bigquery >= 3.13.0, <4.0.0dev",
     "ipywidgets>=7.7.1",
     "ipython>=7.23.1",
     "ipykernel>=6.0.0",
+    "packaging >= 20.0.0",
     "pandas>=1.1.0",
     "pyarrow >= 3.0.0",
+    "tqdm >= 4.7.4, <5.0.0dev",
 ]
-extras = {}
+extras = {
+    # bqstorage had a period where it was a required dependency, and has been
+    # moved back to optional due to bloat.  See
+    # https://github.com/googleapis/python-bigquery/issues/1196 for more background.
+    "bqstorage": [
+        "google-cloud-bigquery-storage >= 2.6.0, <3.0.0dev",
+        # Due to an issue in pip's dependency resolver, the `grpc` extra is not
+        # installed, even though `google-cloud-bigquery-storage` specifies it
+        # as `google-api-core[grpc]`. We thus need to explicitly specify it here.
+        # See: https://github.com/googleapis/python-bigquery/issues/83 The
+        # grpc.Channel.close() method isn't added until 1.32.0.
+        # https://github.com/grpc/grpc/pull/15254
+        "grpcio >= 1.47.0, < 2.0dev",
+        "grpcio >= 1.49.1, < 2.0dev; python_version>='3.11'",
+    ],
+}
 
 all_extras = []
 
