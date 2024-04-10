@@ -39,6 +39,7 @@ templated_files = common.py_library(
     cov_level=100,
     unit_test_extras=extras,
     unit_test_extras_by_python=extras_by_python,
+    unit_test_external_dependencies=["google-cloud-testutils"],
     system_test_extras=extras,
     intersphinx_dependencies={
         "pandas": "https://pandas.pydata.org/pandas-docs/stable/",
@@ -84,6 +85,6 @@ python.py_samples(skip_readmes=True)
 # Final cleanup
 # ----------------------------------------------------------------------------
 
-s.shell.run(["nox", "-s", "blacken"], hide_output=False)
+s.shell.run(["nox", "-s", "format"], hide_output=False)
 for noxfile in REPO_ROOT.glob("samples/**/noxfile.py"):
     s.shell.run(["nox", "-s", "blacken"], cwd=noxfile.parent, hide_output=False)
