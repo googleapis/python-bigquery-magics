@@ -109,6 +109,18 @@ def missing_grpcio_lib():
     return test_utils.imports.maybe_fail_import(predicate=fail_if)
 
 
+@pytest.fixture
+def mock_credentials(monkeypatch):
+    credentials = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+
+    # Set up the context with monkeypatch so that it's reset for subsequent
+    # tests.
+    monkeypatch.setattr(bigquery_magics.context, "_project", "test-project")
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", credentials)
+
+
 PROJECT_ID = "its-a-project-eh"
 JOB_ID = "some-random-id"
 JOB_REFERENCE_RESOURCE = {"projectId": PROJECT_ID, "jobId": JOB_ID}
@@ -138,27 +150,6 @@ QUERY_RESULTS_RESOURCE = {
     "jobComplete": True,
     "schema": {"fields": [{"name": "the_answer", "type": "INTEGER"}]},
 }
-
-
-def test_context_with_default_credentials():
-    """When Application Default Credentials are set, the context credentials
-    will be created the first time it is called
-    """
-    assert bigquery_magics.context._credentials is None
-    assert bigquery_magics.context._project is None
-
-    project = "prahj-ekt"
-    credentials_mock = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-    default_patch = mock.patch(
-        "google.auth.default", return_value=(credentials_mock, project)
-    )
-    with default_patch as default_mock:
-        assert bigquery_magics.context.credentials is credentials_mock
-        assert bigquery_magics.context.project == project
-
-    assert default_mock.call_count == 2
 
 
 @pytest.mark.usefixtures("ipython_interactive")
@@ -203,25 +194,6 @@ def test_context_with_default_connection():
         headers=mock.ANY,
     )
     default_conn.api_request.assert_has_calls([begin_call, query_results_call])
-
-
-def test_context_credentials_and_project_can_be_set_explicitly():
-    project1 = "one-project-55564"
-    project2 = "other-project-52569"
-    credentials_mock = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-    default_patch = mock.patch(
-        "google.auth.default", return_value=(credentials_mock, project1)
-    )
-    with default_patch as default_mock:
-        bigquery_magics.context.credentials = credentials_mock
-        bigquery_magics.context.project = project2
-
-    assert bigquery_magics.context.project == project2
-    assert bigquery_magics.context.credentials is credentials_mock
-    # default should not be called if credentials & project are explicitly set
-    assert default_mock.call_count == 0
 
 
 @pytest.mark.usefixtures("ipython_interactive")
@@ -1253,21 +1225,12 @@ def test_context_with_no_query_cache_from_context(monkeypatch):
     assert not jobs_insert_call[1]["data"]["configuration"]["query"]["useQueryCache"]
 
 
-@pytest.mark.usefixtures("ipython_interactive")
-def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
+def test_bigquery_magic_w_progress_bar_type_w_context_setter():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context._project = None
 
     bigquery_magics.context.progress_bar_type = "tqdm_gui"
-
-    mock_credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-
-    # Set up the context with monkeypatch so that it's reset for subsequent
-    # tests.
-    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
 
     # Mock out the BigQuery Storage API.
     if bigquery_storage is not None:
@@ -1301,7 +1264,7 @@ def test_bigquery_magic_w_progress_bar_type_w_context_setter(monkeypatch):
     assert isinstance(return_value, pandas.DataFrame)
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_progress_bar_type():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
@@ -1458,7 +1421,7 @@ def test_bigquery_magic_with_multiple_options():
     assert job_config_used.maximum_bytes_billed == 1024
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_string_params(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
@@ -1492,7 +1455,7 @@ def test_bigquery_magic_with_string_params(ipython_ns_cleanup):
     assert list(df) == list(result)  # verify column names
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_dict_params(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
@@ -1566,9 +1529,6 @@ def test_bigquery_magic_with_dict_params_incorrect_syntax():
 def test_bigquery_magic_with_dict_params_duplicate():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     sql = "SELECT @foo AS foo"
 
@@ -1579,13 +1539,10 @@ def test_bigquery_magic_with_dict_params_duplicate():
         ip.run_cell_magic("bigquery", cell_magic_args, sql)
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_option_value_incorrect():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     sql = "SELECT @foo AS foo"
 
@@ -1594,13 +1551,10 @@ def test_bigquery_magic_with_option_value_incorrect():
         ip.run_cell_magic("bigquery", cell_magic_args, sql)
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_dict_params_negative_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     ipython_ns_cleanup.append((ip, "params_dict_df"))
 
@@ -1631,13 +1585,10 @@ def test_bigquery_magic_with_dict_params_negative_value(ipython_ns_cleanup):
     assert df["num"][0] == -17
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_dict_params_array_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     ipython_ns_cleanup.append((ip, "params_dict_df"))
 
@@ -1668,13 +1619,10 @@ def test_bigquery_magic_with_dict_params_array_value(ipython_ns_cleanup):
     assert list(df["array_data"]) == ["foo bar", "baz quux"]
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_dict_params_tuple_value(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     ipython_ns_cleanup.append((ip, "params_dict_df"))
 
@@ -1722,13 +1670,10 @@ def test_bigquery_magic_with_improperly_formatted_params():
 @pytest.mark.parametrize(
     "raw_sql", ("SELECT answer AS 42", " \t   SELECT answer AS 42  \t  ")
 )
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_valid_query_in_existing_variable(ipython_ns_cleanup, raw_sql):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     ipython_ns_cleanup.append((ip, "custom_query"))
     ipython_ns_cleanup.append((ip, "query_results_df"))
@@ -1758,13 +1703,10 @@ def test_bigquery_magic_valid_query_in_existing_variable(ipython_ns_cleanup, raw
     assert list(df["answer"]) == [42]
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_nonexisting_query_variable():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
@@ -1779,13 +1721,10 @@ def test_bigquery_magic_nonexisting_query_variable():
     run_query_mock.assert_not_called()
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_empty_query_variable_name():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     cell_body = "$"  # Not referring to any variable (name omitted).
@@ -1798,13 +1737,10 @@ def test_bigquery_magic_empty_query_variable_name():
     run_query_mock.assert_not_called()
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_query_variable_non_string(ipython_ns_cleanup):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
 
@@ -1821,13 +1757,10 @@ def test_bigquery_magic_query_variable_non_string(ipython_ns_cleanup):
     run_query_mock.assert_not_called()
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_query_variable_not_identifier():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     cell_body = "$123foo"  # 123foo is not valid Python identifier
 
@@ -1843,13 +1776,10 @@ def test_bigquery_magic_query_variable_not_identifier():
     assert "must be a fully-qualified ID" in output
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_invalid_multiple_option_values():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     sql = "SELECT @foo AS foo"
 
@@ -1860,17 +1790,10 @@ def test_bigquery_magic_with_invalid_multiple_option_values():
         ip.run_cell_magic("bigquery", cell_magic_args, sql)
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_omits_tracebacks_from_error_message():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-
-    credentials_mock = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-    default_patch = mock.patch(
-        "google.auth.default", return_value=(credentials_mock, "general-project")
-    )
 
     run_query_patch = mock.patch(
         "bigquery_magics.bigquery._run_query",
@@ -1878,7 +1801,7 @@ def test_bigquery_magic_omits_tracebacks_from_error_message():
         side_effect=exceptions.BadRequest("Syntax error in SQL query"),
     )
 
-    with run_query_patch, default_patch, io.capture_output() as captured_io:
+    with run_query_patch, io.capture_output() as captured_io:
         ip.run_cell_magic("bigquery", "", "SELECT foo FROM WHERE LIMIT bar")
 
     output = captured_io.stderr
@@ -1887,22 +1810,14 @@ def test_bigquery_magic_omits_tracebacks_from_error_message():
     assert "Syntax error" not in captured_io.stdout
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_w_destination_table_invalid_format():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context._project = None
-
-    credentials_mock = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-    default_patch = mock.patch(
-        "google.auth.default", return_value=(credentials_mock, "general-project")
-    )
 
     client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
 
-    with client_patch, default_patch, pytest.raises(ValueError) as exc_context:
+    with client_patch, pytest.raises(ValueError) as exc_context:
         ip.run_cell_magic(
             "bigquery", "--destination_table dataset", "SELECT foo FROM WHERE LIMIT bar"
         )
@@ -1913,13 +1828,10 @@ def test_bigquery_magic_w_destination_table_invalid_format():
     )
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_w_destination_table():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     create_dataset_if_necessary_patch = mock.patch(
         "bigquery_magics.bigquery._create_dataset_if_necessary",
@@ -1943,13 +1855,10 @@ def test_bigquery_magic_w_destination_table():
         assert job_config_used.destination.table_id == "table_id"
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_create_dataset_fails():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     create_dataset_if_necessary_patch = mock.patch(
         "bigquery_magics.bigquery._create_dataset_if_necessary",
@@ -1973,13 +1882,10 @@ def test_bigquery_magic_create_dataset_fails():
     assert close_transports.called
 
 
-@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
 def test_bigquery_magic_with_location():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
-    bigquery_magics.context.credentials = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
 
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
     with run_query_patch as run_query_mock:
