@@ -19,14 +19,14 @@ IPython = pytest.importorskip("IPython")
 
 @pytest.fixture(scope="session")
 def lexer_class():
-    from google.cloud.bigquery.magics.line_arg_parser.lexer import Lexer
+    from bigquery_magics.line_arg_parser.lexer import Lexer
 
     return Lexer
 
 
 def test_empy_input(lexer_class):
-    from google.cloud.bigquery.magics.line_arg_parser import TokenType
-    from google.cloud.bigquery.magics.line_arg_parser.lexer import Token
+    from bigquery_magics.line_arg_parser import TokenType
+    from bigquery_magics.line_arg_parser.lexer import Token
 
     lexer = lexer_class("")
     tokens = list(lexer)
