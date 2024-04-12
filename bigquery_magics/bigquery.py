@@ -99,6 +99,7 @@ from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
 from google.cloud.bigquery import exceptions
 from google.cloud.bigquery.dbapi import _helpers
+from google.cloud.bigquery import _versions_helpers
 
 from bigquery_magics import line_arg_parser as lap
 import bigquery_magics.config
@@ -610,7 +611,7 @@ def _make_bqstorage_client(client, use_bqstorage_api, client_options):
         return None
 
     try:
-        bigquery_magics._versions_helpers.BQ_STORAGE_VERSIONS.try_import(
+        _versions_helpers.BQ_STORAGE_VERSIONS.try_import(
             raise_if_error=True
         )
     except exceptions.BigQueryStorageNotFoundError as err:
