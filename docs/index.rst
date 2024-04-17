@@ -15,8 +15,8 @@ More Examples
 .. toctree::
   :maxdepth: 2
 
-  usage/index
-  Official Google BigQuery How-to Guides <https://cloud.google.com/bigquery/docs/how-to>
+  magics
+  Official Google BigQuery Magics Guide <https://cloud.google.com/python/docs/reference/bigquery/latest/magics>
 
 API Reference
 -------------
