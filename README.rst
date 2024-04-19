@@ -71,7 +71,7 @@ Mac/Linux
     pip install virtualenv
     virtualenv <your-env>
     source <your-env>/bin/activate
-    <your-env>/bin/pip install google-cloud-bigquery
+    <your-env>/bin/pip install google-cloud-bigquery-magics
 
 
 Windows
@@ -82,53 +82,4 @@ Windows
     pip install virtualenv
     virtualenv <your-env>
     <your-env>\Scripts\activate
-    <your-env>\Scripts\pip.exe install google-cloud-bigquery
-
-Example Usage
--------------
-
-Running a query:
-~~~~~~~~~~~~~~~
-
-.. code:: SQL
-
-    %%bigquery
-    SELECT name, SUM(number) as count
-    FROM `bigquery-public-data.usa_names.usa_1910_current`
-    GROUP BY name
-    ORDER BY count DESC
-    LIMIT 3
-
-Instrumenting With OpenTelemetry
---------------------------------
-
-This application uses `OpenTelemetry`_ to output tracing data from
-API calls to BigQuery. To enable OpenTelemetry tracing in
-the BigQuery client the following PyPI packages need to be installed:
-
-.. _OpenTelemetry: https://opentelemetry.io
-
-.. code-block:: console
-
-    pip install google-cloud-bigquery[opentelemetry] opentelemetry-exporter-gcp-trace
-
-After installation, OpenTelemetry can be used in the BigQuery
-client and in BigQuery jobs. First, however, an exporter must be
-specified for where the trace data will be outputted to. An
-example of this can be found here:
-
-.. code-block:: python
-
-    from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-    tracer_provider = TracerProvider()
-    tracer_provider = BatchSpanProcessor(CloudTraceSpanExporter())
-    trace.set_tracer_provider(TracerProvider())
-
-In this example all tracing data will be published to the Google
-`Cloud Trace`_ console. For more information on OpenTelemetry, please consult the `OpenTelemetry documentation`_.
-
-.. _OpenTelemetry documentation: https://opentelemetry-python.readthedocs.io
-.. _Cloud Trace: https://cloud.google.com/trace
+    <your-env>\Scripts\pip.exe install google-cloud-bigquery-magics
