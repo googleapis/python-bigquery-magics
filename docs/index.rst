@@ -16,7 +16,7 @@ More Examples
   :maxdepth: 2
 
   magics
-  Official Google BigQuery Magics Guide <https://cloud.google.com/python/docs/reference/bigquery/latest/magics>
+  Official Google BigQuery Magics Tutorials <https://cloud.google.com/bigquery/docs/visualize-jupyter>
 
 API Reference
 -------------

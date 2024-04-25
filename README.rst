@@ -1,6 +1,5 @@
 IPython Magics for BigQuery
-
-=================================
+===========================
 
 |GA| |pypi| |versions|
 
@@ -71,7 +70,7 @@ Mac/Linux
     pip install virtualenv
     virtualenv <your-env>
     source <your-env>/bin/activate
-    <your-env>/bin/pip install google-cloud-bigquery-magics
+    <your-env>/bin/pip install bigquery-magics
 
 
 Windows
@@ -82,4 +81,4 @@ Windows
     pip install virtualenv
     virtualenv <your-env>
     <your-env>\Scripts\activate
-    <your-env>\Scripts\pip.exe install google-cloud-bigquery-magics
+    <your-env>\Scripts\pip.exe install bigquery-magics
