@@ -108,6 +108,7 @@ nox.options.sessions = [
     "blacken",
     "docs",
     "format",
+    "mypy",
 ]
 
 # Error if a python version is missing
