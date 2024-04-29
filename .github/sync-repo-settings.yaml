@@ -18,12 +18,10 @@ branchProtectionRules:
     - 'unit (3.12)'
     - 'cover'
     # TODO: enable once the samples tests ready.
-    # - 'Samples - Lint'
-    # - 'Samples - Python 3.8'
-    # - 'Samples - Python 3.9'
-    # - 'Samples - Python 3.10'
-    # - 'Samples - Python 3.11'
-    # - 'Samples - Python 3.12'
+    - 'Samples - Lint'
+    - 'Samples - Python 3.8'
+    - 'Samples - Python 3.11'
+    - 'Samples - Python 3.12'
 permissionRules:
   - team: actools-python
     permission: admin
