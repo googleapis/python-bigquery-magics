@@ -173,15 +173,6 @@ def mypy(session):
     session.install(".")
     session.install("mypy")
 
-    # Just install the dependencies' type info directly, since "mypy --install-types"
-    # might require an additional pass.
-    session.install(
-        "types-protobuf",
-        "types-python-dateutil",
-        "types-requests",
-        "types-setuptools",
-    )
-
     shutil.rmtree(".mypy_cache", ignore_errors=True)
     session.run("mypy", "-p", "bigquery_magics", "--show-traceback")
 
