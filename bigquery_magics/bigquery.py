@@ -108,7 +108,7 @@ import bigquery_magics.line_arg_parser.exceptions
 try:
     from google.cloud import bigquery_storage  # type: ignore
 except ImportError:
-    bigquery_storage = None
+    bigquery_storage = None  # type: ignore
 
 IPYTHON_USER_AGENT = "ipython-{}".format(IPython.__version__)
 context = bigquery_magics.config.context

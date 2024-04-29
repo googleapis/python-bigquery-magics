@@ -167,6 +167,25 @@ def lint_setup_py(session):
     session.run("python", "setup.py", "check", "--restructuredtext", "--strict")
 
 
+@nox.session(python=DEFAULT_PYTHON_VERSION)
+def mypy(session):
+    """Run type checks with mypy."""
+    session.install(".")
+    session.install("mypy")
+
+    # Just install the dependencies' type info directly, since "mypy --install-types"
+    # might require an additional pass.
+    session.install(
+        "types-protobuf",
+        "types-python-dateutil",
+        "types-requests",
+        "types-setuptools",
+    )
+
+    shutil.rmtree(".mypy_cache", ignore_errors=True)
+    session.run("mypy", "-p", "bigquery_magics", "--show-traceback")
+
+
 def install_unittest_dependencies(session, *constraints):
     standard_deps = UNIT_TEST_STANDARD_DEPENDENCIES + UNIT_TEST_DEPENDENCIES
     session.install(*standard_deps, *constraints)
