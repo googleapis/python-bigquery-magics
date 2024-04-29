@@ -11,15 +11,14 @@ branchProtectionRules:
     - 'OwlBot Post Processor'
     - 'lint'
     - 'Kokoro system-3.8'
+    - 'Kokoro system-3.11 (noextras)'
     - 'Kokoro system-3.12'
-    # TODO: Enable once the docs tests ready.
-    # - 'docs'
+    - 'docs'
     - 'unit (3.7)'
     - 'unit (3.8)'
     - 'unit (3.11)'
     - 'unit (3.12)'
     - 'cover'
-    # TODO: enable once the samples tests ready.
     - 'Samples - Lint'
     - 'Samples - Python 3.8'
     - 'Samples - Python 3.11'
