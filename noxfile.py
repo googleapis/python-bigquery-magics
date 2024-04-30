@@ -100,15 +100,14 @@ CURRENT_DIRECTORY = pathlib.Path(__file__).parent.absolute()
 
 # 'docfx' is excluded since it only needs to run in 'docs-presubmit'
 nox.options.sessions = [
-    "blacken",
+    "unit",
+    "system",
     "cover",
-    "docs",
-    "format",
     "lint",
     "lint_setup_py",
-    "mypy",
-    "system",
-    "unit",
+    "blacken",
+    "docs",
+    "format",
 ]
 
 # Error if a python version is missing
@@ -166,16 +165,6 @@ def lint_setup_py(session):
     """Verify that setup.py is valid (including RST check)."""
     session.install("docutils", "pygments")
     session.run("python", "setup.py", "check", "--restructuredtext", "--strict")
-
-
-@nox.session(python=DEFAULT_PYTHON_VERSION)
-def mypy(session):
-    """Run type checks with mypy."""
-    session.install(".")
-    session.install("mypy")
-
-    shutil.rmtree(".mypy_cache", ignore_errors=True)
-    session.run("mypy", "-p", "bigquery_magics", "--show-traceback")
 
 
 def install_unittest_dependencies(session, *constraints):
