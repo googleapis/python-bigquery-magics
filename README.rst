@@ -70,7 +70,7 @@ Mac/Linux
     pip install virtualenv
     virtualenv <your-env>
     source <your-env>/bin/activate
-    <your-env>/bin/pip install bigquery-magics
+    <your-env>/bin/pip install google-cloud-bigquery
 
 
 Windows
@@ -81,4 +81,32 @@ Windows
     pip install virtualenv
     virtualenv <your-env>
     <your-env>\Scripts\activate
-    <your-env>\Scripts\pip.exe install bigquery-magics
+    <your-env>\Scripts\pip.exe install google-cloud-bigquery
+
+Example Usage
+-------------
+
+To use these magics, you must first register them. Run the ``%load_ext`` magic
+in a Jupyter notebook cell.
+
+.. code::
+
+    %load_ext google.cloud.bigquery
+
+This makes the ``%%bigquery`` magic available.
+
+Running a query
+~~~~~~~~~~~~~~~
+
+.. literalinclude:: /samples/snippets/query.py
+   :dedent: 4
+   :start-after: [START bigquery_jupyter_query]
+   :end-before: [END bigquery_jupyter_query]
+
+Running a parameterized query
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: /samples/snippets/query_params_scalars.py
+   :dedent: 4
+   :start-after: [START bigquery_jupyter_query_params_scalars]
+   :end-before: [END bigquery_jupyter_query_params_scalars]
