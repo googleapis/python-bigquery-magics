@@ -86,27 +86,21 @@ Windows
 Example Usage
 -------------
 
-To use these magics, you must first register them. Run the ``%load_ext`` magic
+To use these magics, you must first register them. Run the ``%load_ext bigquery-magic``
 in a Jupyter notebook cell.
 
-.. code::
+.. code-block::
 
     %load_ext bigquery-magics
 
-This makes the ``%%bigquery`` magic available.
-
-Running a query
+Perform a query
 ~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../samples/snippets/query.py
-   :dedent: 4
-   :start-after: [START bigquery_jupyter_query]
-   :end-before: [END bigquery_jupyter_query]
+.. code:: python
 
-Running a parameterized query
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. literalinclude:: ../samples/snippets/query_params_scalars.py
-   :dedent: 4
-   :start-after: [START bigquery_jupyter_query_params_scalars]
-   :end-before: [END bigquery_jupyter_query_params_scalars]
+    %%bigquery
+    SELECT name, SUM(number) as count
+    FROM 'bigquery-public-data.usa_names.usa_1910_current'
+    GROUP BY name
+    ORDER BY count DESC
+    LIMIT 3
