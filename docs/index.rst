@@ -18,19 +18,12 @@ More Examples
   magics
   Official Google BigQuery Magics Tutorials <https://cloud.google.com/bigquery/docs/visualize-jupyter>
 
-API Reference
--------------
-
-.. toctree::
-  :maxdepth: 2
-
-  reference
 
 Migration Guide
 ---------------
 
-See the guides below for instructions on migrating from older to newer *major* releases
-of this library (from ``1.x`` to ``2.x``, or from ``2.x`` to ``3.x``).
+Migrating from the ``google-cloud-bigquery``, you need to run the ``%load_ext bigquery-magics``
+magic in a Jupyter notebook cell.
 
 .. toctree::
     :maxdepth: 2
@@ -39,7 +32,7 @@ of this library (from ``1.x`` to ``2.x``, or from ``2.x`` to ``3.x``).
 Changelog
 ---------
 
-For a list of all ``google-cloud-bigquery`` releases:
+For a list of all ``bigquery-magics`` releases:
 
 .. toctree::
   :maxdepth: 2

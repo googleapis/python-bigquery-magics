@@ -59,7 +59,7 @@ Unsupported Python Versions
 Python == 2.7, Python == 3.5, Python == 3.6.
 
 The last version of this library compatible with Python 2.7 and 3.5 is
-`google-cloud-bigquery==1.28.0`.
+`bigquery-magics==0.1.0`.
 
 
 Mac/Linux
@@ -70,7 +70,7 @@ Mac/Linux
     pip install virtualenv
     virtualenv <your-env>
     source <your-env>/bin/activate
-    <your-env>/bin/pip install google-cloud-bigquery
+    <your-env>/bin/pip install bigquery-magics
 
 
 Windows
@@ -81,7 +81,7 @@ Windows
     pip install virtualenv
     virtualenv <your-env>
     <your-env>\Scripts\activate
-    <your-env>\Scripts\pip.exe install google-cloud-bigquery
+    <your-env>\Scripts\pip.exe install bigquery-magics
 
 Example Usage
 -------------
@@ -91,14 +91,14 @@ in a Jupyter notebook cell.
 
 .. code::
 
-    %load_ext google.cloud.bigquery
+    %load_ext bigquery-magics
 
 This makes the ``%%bigquery`` magic available.
 
 Running a query
 ~~~~~~~~~~~~~~~
 
-.. literalinclude:: /samples/snippets/query.py
+.. literalinclude:: ../samples/snippets/query.py
    :dedent: 4
    :start-after: [START bigquery_jupyter_query]
    :end-before: [END bigquery_jupyter_query]
@@ -106,7 +106,7 @@ Running a query
 Running a parameterized query
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: /samples/snippets/query_params_scalars.py
+.. literalinclude:: ../samples/snippets/query_params_scalars.py
    :dedent: 4
    :start-after: [START bigquery_jupyter_query_params_scalars]
    :end-before: [END bigquery_jupyter_query_params_scalars]
