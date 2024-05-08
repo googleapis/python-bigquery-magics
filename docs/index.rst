@@ -13,8 +13,19 @@ More Examples
 Migration Guide
 ---------------
 
-Migrating from the ``google-cloud-bigquery``, you need to run the ``%load_ext bigquery-magics``
-magic in a Jupyter notebook cell.
+Migrating from the ``google-cloud-bigquery``, you need to run the following in a Jupyter notebook cell.
+
+Before:
+
+.. code::
+
+    %load_ext google.cloud.bigquery
+
+After:
+
+.. code::
+
+    %load_ext bigquery_magics
 
 .. toctree::
     :maxdepth: 2

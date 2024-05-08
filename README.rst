@@ -56,10 +56,7 @@ Python >= 3.7
 
 Unsupported Python Versions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Python == 2.7, Python == 3.5, Python == 3.6.
-
-The last version of this library compatible with Python 2.7 and 3.5 is
-`bigquery-magics==0.1.0`.
+Python == 3.5, Python == 3.6.
 
 
 Mac/Linux
@@ -86,12 +83,12 @@ Windows
 Example Usage
 -------------
 
-To use these magics, you must first register them. Run the ``%load_ext bigquery-magic``
+To use these magics, you must first register them. Run the ``%load_ext bigquery_magics``
 in a Jupyter notebook cell.
 
 .. code-block::
 
-    %load_ext bigquery-magics
+    %load_ext bigquery_magics
 
 Perform a query
 ~~~~~~~~~~~~~~~
