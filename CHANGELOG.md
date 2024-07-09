@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/googleapis/python-bigquery-magics/compare/v0.1.0...v0.1.1) (2024-07-09)
+
+
+### Documentation
+
+* Correct links to project pages in README ([#33](https://github.com/googleapis/python-bigquery-magics/issues/33)) ([ace5020](https://github.com/googleapis/python-bigquery-magics/commit/ace5020ff8ae374145579e75cb996150680f2bde))
+* Update the IPython Magics docs ([#27](https://github.com/googleapis/python-bigquery-magics/issues/27)) ([62e88b3](https://github.com/googleapis/python-bigquery-magics/commit/62e88b3f4a595ecdc4a00d661b956c5d50fd6c35))
+
 ## 0.1.0 (2024-04-25)
 
 
