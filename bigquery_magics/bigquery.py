@@ -111,7 +111,9 @@ try:
 except ImportError:
     bigquery_storage = None
 
-USER_AGENT = f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__}"
+USER_AGENT = (
+    f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__}"
+)
 context = bigquery_magics.config.context
 
 
