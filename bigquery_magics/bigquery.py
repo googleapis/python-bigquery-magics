@@ -100,7 +100,7 @@ from google.cloud import bigquery
 from google.cloud.bigquery import exceptions
 from google.cloud.bigquery.dbapi import _helpers
 
-import bigquery_magics
+import bigquery_magics.version
 from bigquery_magics import line_arg_parser as lap
 import bigquery_magics._versions_helpers
 import bigquery_magics.config
@@ -112,7 +112,7 @@ except ImportError:
     bigquery_storage = None
 
 USER_AGENT = (
-    f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__}"
+    f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.version.__version__}"
 )
 context = bigquery_magics.config.context
 
