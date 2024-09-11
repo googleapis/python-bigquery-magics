@@ -35,8 +35,7 @@ class Context(object):
 
     _credentials = None
     _project = None
-
-    connection = None
+    _connection = None
 
     default_query_job_config = bigquery.QueryJobConfig()
     """google.cloud.bigquery.job.QueryJobConfig: Default job
