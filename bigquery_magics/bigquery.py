@@ -370,10 +370,11 @@ def _cell_magic(line, query):
     params, args = _parse_magic_args(line)
 
     query = query.strip()
-    try:
-        _validate_query(query)
-    except Exception as e:
-        _handle_error(e, args.destination_var)
+    if not query:
+        error = ValueError("Query is missing.")
+        _handle_error(error, args.destination_var)
+        return
+    query = _validate_and_resolve_query(query, args)
 
     bq_client, bqstorage_client = _create_clients(args)
 
@@ -386,9 +387,7 @@ def _cell_magic(line, query):
             bqstorage_client=bqstorage_client,
         )
     finally:
-        bq_client.close()
-        if bqstorage_client is not None:
-            bqstorage_client._transport.grpc_channel.close()
+        _close_transports(bq_client, bqstorage_client)
 
 
 def _parse_magic_args(line: str) -> tuple[list[Any], Any]:
@@ -577,13 +576,11 @@ def _make_bq_query(
         return result
 
 
-def _validate_query(query: str):
-    if not query:
-        raise ValueError("Query is missing.")
+def _validate_and_resolve_query(query: str, args: Any) -> str:
 
     # Check if query is given as a reference to a variable.
     if not query.startswith("$"):
-        return
+        return query
 
     query_var_name = query[1:]
 
@@ -602,6 +599,7 @@ def _validate_query(query: str):
                 f"Query variable {query_var_name} must be a string "
                 "or a bytes-like value."
             )
+    return query
 
 
 def _create_job_config(args: Any, params: list[Any]) -> QueryJobConfig:
@@ -667,3 +665,20 @@ def _make_bqstorage_client(client, client_options):
         client_options=client_options,
         client_info=gapic_client_info.ClientInfo(user_agent=USER_AGENT),
     )
+
+def _close_transports(client, bqstorage_client):
+    """Close the given clients' underlying transport channels.
+
+    Closing the transport is needed to release system resources, namely open
+    sockets.
+
+    Args:
+        client (:class:`~google.cloud.bigquery.client.Client`):
+        bqstorage_client
+            (Optional[:class:`~google.cloud.bigquery_storage.BigQueryReadClient`]):
+            A client for the BigQuery Storage API.
+
+    """
+    client.close()
+    if bqstorage_client is not None:
+        bqstorage_client._transport.grpc_channel.close()
