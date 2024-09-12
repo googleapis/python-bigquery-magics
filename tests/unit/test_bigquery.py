@@ -352,10 +352,6 @@ def test__make_bqstorage_client_true_obsolete_dependency():
     bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
 )
 def test__make_bqstorage_client_true_missing_gapic(missing_grpcio_lib):
-    credentials_mock = mock.create_autospec(
-        google.auth.credentials.Credentials, instance=True
-    )
-
     with pytest.raises(ImportError) as exc_context, missing_grpcio_lib:
         magics._make_bqstorage_client(True, {})
 
