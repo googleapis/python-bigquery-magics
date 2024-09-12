@@ -111,7 +111,6 @@ import bigquery_magics.version
 
 try:
     from google.cloud import bigquery_storage  # type: ignore
-    from google.cloud.bigquery_storage import BigQueryReadClient
 except ImportError:
     bigquery_storage = None
 
@@ -446,7 +445,7 @@ def _split_args_line(line: str) -> tuple[str, str]:
     return params_option_value, rest_of_args
 
 
-def _create_clients(args: Any) -> tuple[bigquery.Client, BigQueryReadClient | None]:
+def _create_clients(args: Any) -> tuple[bigquery.Client, Any]:
     bigquery_client_options = copy.deepcopy(context.bigquery_client_options)
     if args.bigquery_api_endpoint:
         if isinstance(bigquery_client_options, dict):
@@ -497,7 +496,7 @@ def _make_bq_query(
     args: Any,
     params: list[Any],
     bq_client: bigquery.Client,
-    bqstorage_client: BigQueryReadClient | None,
+    bqstorage_client: Any,
 ):
     max_results = int(args.max_results) if args.max_results else None
 
@@ -624,7 +623,7 @@ def _create_job_config(args: Any, params: list[Any]) -> QueryJobConfig:
     return job_config
 
 
-def _make_bqstorage_client(client, client_options) -> BigQueryReadClient:
+def _make_bqstorage_client(client, client_options):
     """Creates a BigQuery Storage client.
 
     Args:
