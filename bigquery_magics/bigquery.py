@@ -577,7 +577,6 @@ def _make_bq_query(
 
 
 def _validate_and_resolve_query(query: str, args: Any) -> str:
-
     # Check if query is given as a reference to a variable.
     if not query.startswith("$"):
         return query
@@ -665,6 +664,7 @@ def _make_bqstorage_client(client, client_options):
         client_options=client_options,
         client_info=gapic_client_info.ClientInfo(user_agent=USER_AGENT),
     )
+
 
 def _close_transports(client, bqstorage_client):
     """Close the given clients' underlying transport channels.
