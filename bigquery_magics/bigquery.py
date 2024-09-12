@@ -88,7 +88,7 @@ import copy
 import re
 import sys
 import time
-from typing import Any
+from typing import Any, List, Tuple
 import warnings
 
 import IPython  # type: ignore
@@ -390,7 +390,7 @@ def _cell_magic(line, query):
         _close_transports(bq_client, bqstorage_client)
 
 
-def _parse_magic_args(line: str) -> tuple[list[Any], Any]:
+def _parse_magic_args(line: str) -> Tuple[List[Any], Any]:
     # The built-in parser does not recognize Python structures such as dicts, thus
     # we extract the "--params" option and inteprpret it separately.
     try:
@@ -426,7 +426,7 @@ def _parse_magic_args(line: str) -> tuple[list[Any], Any]:
     return params, magic_arguments.parse_argstring(_cell_magic, rest_of_args)
 
 
-def _split_args_line(line: str) -> tuple[str, str]:
+def _split_args_line(line: str) -> Tuple[str, str]:
     """Split out the --params option value from the input line arguments.
 
     Args:
@@ -444,7 +444,7 @@ def _split_args_line(line: str) -> tuple[str, str]:
     return params_option_value, rest_of_args
 
 
-def _create_clients(args: Any) -> tuple[bigquery.Client, Any]:
+def _create_clients(args: Any) -> Tuple[bigquery.Client, Any]:
     bigquery_client_options = copy.deepcopy(context.bigquery_client_options)
     if args.bigquery_api_endpoint:
         if isinstance(bigquery_client_options, dict):
@@ -493,7 +493,7 @@ def _create_clients(args: Any) -> tuple[bigquery.Client, Any]:
 def _make_bq_query(
     query: str,
     args: Any,
-    params: list[Any],
+    params: List[Any],
     bq_client: bigquery.Client,
     bqstorage_client: Any,
 ):
@@ -601,7 +601,7 @@ def _validate_and_resolve_query(query: str, args: Any) -> str:
     return query
 
 
-def _create_job_config(args: Any, params: list[Any]) -> QueryJobConfig:
+def _create_job_config(args: Any, params: List[Any]) -> QueryJobConfig:
     job_config = QueryJobConfig()
     job_config.query_parameters = params
     job_config.use_legacy_sql = args.use_legacy_sql
