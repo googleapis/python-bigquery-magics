@@ -51,7 +51,7 @@ class Context(object):
 
             >>> from google.cloud.bigquery import magics
             >>> bigquery_magics.context.default_query_job_config.maximum_bytes_billed = 100000000
-        """
+    """
 
     bigquery_client_options = client_options.ClientOptions()
     """google.api_core.client_options.ClientOptions: client options to be
@@ -69,7 +69,7 @@ class Context(object):
             >>> client_options = {}
             >>> client_options['api_endpoint'] = "https://some.special.url"
             >>> bigquery_magics.context.bigquery_client_options = client_options
-        """
+    """
 
     bqstorage_client_options = client_options.ClientOptions()
     """google.api_core.client_options.ClientOptions: client options to be
@@ -87,7 +87,7 @@ class Context(object):
             >>> client_options = {}
             >>> client_options['api_endpoint'] = "https://some.special.url"
             >>> bigquery_magics.context.bqstorage_client_options = client_options
-        """
+    """
 
     progress_bar_type = "tqdm_notebook"
     """str: Default progress bar type to use to display progress bar while
@@ -101,7 +101,7 @@ class Context(object):
 
             >>> from google.cloud.bigquery import magics
             >>> bigquery_magics.context.progress_bar_type = "tqdm_notebook"
-        """
+    """
 
     @property
     def credentials(self):
