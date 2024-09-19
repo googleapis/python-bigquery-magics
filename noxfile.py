@@ -35,7 +35,6 @@ LINT_PATHS = ["docs", "bigquery_magics", "tests", "noxfile.py", "setup.py"]
 DEFAULT_PYTHON_VERSION = "3.8"
 
 UNIT_TEST_PYTHON_VERSIONS: List[str] = ["3.7", "3.8", "3.11", "3.12"]
-UNIT_TEST_WITH_BIGFRAMES_PYTHON_VERSIONS: List[str] = ["3.11", "3.12"]
 UNIT_TEST_STANDARD_DEPENDENCIES = [
     "mock",
     "asyncmock",
@@ -102,7 +101,6 @@ CURRENT_DIRECTORY = pathlib.Path(__file__).parent.absolute()
 # 'docfx' is excluded since it only needs to run in 'docs-presubmit'
 nox.options.sessions = [
     "unit",
-    "unit_bf",
     "system",
     "cover",
     "lint",
@@ -218,38 +216,6 @@ def unit(session, protobuf_implementation):
     # The 'cpp' implementation requires Protobuf<4.
     if protobuf_implementation == "cpp":
         session.install("protobuf<4")
-
-    # Run py.test against the unit tests.
-    session.run(
-        "py.test",
-        "--quiet",
-        f"--junitxml=unit_{session.python}_sponge_log.xml",
-        "--cov=bigquery_magics",
-        "--cov=tests/unit",
-        "--cov-append",
-        "--cov-config=.coveragerc",
-        "--cov-report=",
-        "--cov-fail-under=0",
-        os.path.join("tests", "unit"),
-        *session.posargs,
-        env={
-            "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION": protobuf_implementation,
-        },
-    )
-
-
-@nox.session(python=UNIT_TEST_WITH_BIGFRAMES_PYTHON_VERSIONS)
-@nox.parametrize(
-    "protobuf_implementation",
-    ["python", "upb"],
-)
-def unit_bf(session, protobuf_implementation):
-    # Install all test dependencies, then install this package in-place.
-    constraints_path = str(
-        CURRENT_DIRECTORY / "testing" / f"constraints-{session.python}.txt"
-    )
-    install_unittest_dependencies(session, "-c", constraints_path)
-    session.install("bigframes >= 1.17.0")
 
     # Run py.test against the unit tests.
     session.run(
