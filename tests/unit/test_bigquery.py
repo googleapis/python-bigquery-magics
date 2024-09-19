@@ -23,7 +23,6 @@ import IPython
 import IPython.terminal.interactiveshell as interactiveshell
 import IPython.testing.tools as tools
 import IPython.utils.io as io
-import bigframes.dataframe
 from bigframes.pandas import options as bf_options
 from google.api_core import exceptions
 import google.auth.credentials
