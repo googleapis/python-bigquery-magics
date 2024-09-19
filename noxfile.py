@@ -200,18 +200,11 @@ def install_unittest_dependencies(session, *constraints):
     "protobuf_implementation",
     ["python", "upb", "cpp"],
 )
-@nox.parametrize(
-    "install_bigframes",
-    [True, False],
-)
-def unit(session, protobuf_implementation, install_bigframes):
+def unit(session, protobuf_implementation):
     # Install all test dependencies, then install this package in-place.
 
     if protobuf_implementation == "cpp" and session.python in ("3.11", "3.12"):
         session.skip("cpp implementation is not supported in python 3.11+")
-
-    if install_bigframes and session.python in ("3.7", "3.8"):
-        session.skip("Bigframes only supports Python 3.9+")
 
     constraints_path = str(
         CURRENT_DIRECTORY / "testing" / f"constraints-{session.python}.txt"
@@ -223,9 +216,6 @@ def unit(session, protobuf_implementation, install_bigframes):
     # The 'cpp' implementation requires Protobuf<4.
     if protobuf_implementation == "cpp":
         session.install("protobuf<4")
-
-    if install_bigframes:
-        session.install("bigframes >= 1.17.0")
 
     # Run py.test against the unit tests.
     session.run(
