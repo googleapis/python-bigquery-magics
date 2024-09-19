@@ -209,8 +209,8 @@ def unit(session, protobuf_implementation, install_bigframes):
 
     if protobuf_implementation == "cpp" and session.python in ("3.11", "3.12"):
         session.skip("cpp implementation is not supported in python 3.11+")
-    
-    if install_bigframes and session.python in ('3.7', '3.8'):
+
+    if install_bigframes and session.python in ("3.7", "3.8"):
         session.skip("Bigframes only supports Python versions later than 3.9")
 
     constraints_path = str(
