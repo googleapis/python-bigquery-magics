@@ -23,7 +23,6 @@ import IPython
 import IPython.terminal.interactiveshell as interactiveshell
 import IPython.testing.tools as tools
 import IPython.utils.io as io
-from bigframes.pandas import options as bf_options
 from google.api_core import exceptions
 import google.auth.credentials
 from google.cloud import bigquery
@@ -32,6 +31,7 @@ from google.cloud.bigquery import job, table
 import google.cloud.bigquery._http
 import google.cloud.bigquery.exceptions
 from google.cloud.bigquery.retry import DEFAULT_TIMEOUT
+from packaging.version import Version
 import pandas
 import pytest
 import test_utils.imports  # google-cloud-testutils
@@ -43,6 +43,11 @@ try:
     import google.cloud.bigquery_storage as bigquery_storage
 except ImportError:
     bigquery_storage = None
+
+try:
+    import bigframes.pandas as bpd
+except ImportError:
+    bpd = None
 
 
 def make_connection(*args):
@@ -1894,6 +1899,9 @@ def test_bigquery_magic_with_location():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes():
+    if bpd == None:
+        pytest.skip("BigFrames not installed")
+
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS something"
@@ -1909,12 +1917,28 @@ def test_big_query_magic_bigframes():
         bf_mock.assert_called_once_with(
             sql, max_results=None, configuration=expected_configuration
         )
-        assert bf_options.bigquery.credentials is bigquery_magics.context.credentials
-        assert bf_options.bigquery.project == bigquery_magics.context.project
+        assert bpd.options.bigquery.credentials is bigquery_magics.context.credentials
+        assert bpd.options.bigquery.project == bigquery_magics.context.project
+
+
+@pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
+def test_big_query_magic_bigframes__bigframes_is_not_installed__should_raise_error():
+    if bpd != None:
+        pytest.skip("BigFrames is installed")
+
+    ip = IPython.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    sql = "SELECT 0 AS something"
+
+    with pytest.raises(ValueError, match="Bigframes package is not installed."):
+        ip.run_cell_magic("bigquery", "", sql)
 
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_params():
+    if bpd == None:
+        pytest.skip("BigFrames not installed")
+
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS @p"
@@ -1944,6 +1968,9 @@ def test_big_query_magic_bigframes_with_params():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_max_results():
+    if bpd == None:
+        pytest.skip("BigFrames not installed")
+
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS something"
@@ -1963,6 +1990,9 @@ def test_big_query_magic_bigframes_with_max_results():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
+    if bpd == None:
+        pytest.skip("BigFrames not installed")
+
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS something"
@@ -1980,6 +2010,9 @@ def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_dry_run__should_fail():
+    if bpd == None:
+        pytest.skip("BigFrames not installed")
+
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS @p"

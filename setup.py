@@ -28,7 +28,6 @@ description = "Google BigQuery magics for Jupyter and IPython"
 # 'Development Status :: 5 - Production/Stable'``
 release_status = "Development Status :: 4 - Beta"
 dependencies = [
-    "bigframes >= 1.17.0",
     "db-dtypes>=0.3.0,<2.0.0dev",
     "google-cloud-bigquery >= 3.13.0, <4.0.0dev",
     "ipywidgets>=7.7.1",
@@ -55,6 +54,7 @@ extras = {
         "grpcio >= 1.47.0, < 2.0dev",
         "grpcio >= 1.49.1, < 2.0dev; python_version>='3.11'",
     ],
+    "bigframes": ["bigframes >= 1.17.0"],
 }
 
 all_extras = []

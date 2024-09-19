@@ -95,8 +95,6 @@ import IPython  # type: ignore
 from IPython import display  # type: ignore
 from IPython.core import magic_arguments  # type: ignore
 from IPython.core.getipython import get_ipython
-import bigframes.pandas as bpd
-from bigframes.pandas import options as bf_options
 from google.api_core import client_info
 from google.api_core.exceptions import NotFound
 from google.cloud import bigquery
@@ -115,6 +113,11 @@ try:
     from google.cloud import bigquery_storage  # type: ignore
 except ImportError:
     bigquery_storage = None
+
+try:
+    import bigframes.pandas as bpd
+except ImportError:
+    bpd = None
 
 USER_AGENT = f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.version.__version__}"
 context = bigquery_magics.config.context
@@ -445,8 +448,11 @@ def _query_with_bigframes(query: str, params: List[Any], args: Any):
     if args.dry_run:
         raise ValueError("Dry run is not supported by bigframes engine.")
 
-    bf_options.bigquery.project = context.project
-    bf_options.bigquery.credentials = context.credentials
+    if bpd == None:
+        raise ValueError("Bigframes package is not installed.")
+
+    bpd.options.bigquery.project = context.project
+    bpd.options.bigquery.credentials = context.credentials
 
     max_results = int(args.max_results) if args.max_results else None
 
