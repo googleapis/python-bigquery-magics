@@ -448,7 +448,7 @@ def _query_with_bigframes(query: str, params: List[Any], args: Any):
     if args.dry_run:
         raise ValueError("Dry run is not supported by bigframes engine.")
 
-    if bpd == None:
+    if bpd is None:
         raise ValueError("Bigframes package is not installed.")
 
     bpd.options.bigquery.project = context.project

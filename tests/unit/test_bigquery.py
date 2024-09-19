@@ -31,7 +31,6 @@ from google.cloud.bigquery import job, table
 import google.cloud.bigquery._http
 import google.cloud.bigquery.exceptions
 from google.cloud.bigquery.retry import DEFAULT_TIMEOUT
-from packaging.version import Version
 import pandas
 import pytest
 import test_utils.imports  # google-cloud-testutils
@@ -1899,7 +1898,7 @@ def test_bigquery_magic_with_location():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes():
-    if bpd == None:
+    if bpd is None:
         pytest.skip("BigFrames not installed")
 
     ip = IPython.get_ipython()
@@ -1923,7 +1922,7 @@ def test_big_query_magic_bigframes():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes__bigframes_is_not_installed__should_raise_error():
-    if bpd != None:
+    if bpd is not None:
         pytest.skip("BigFrames is installed")
 
     ip = IPython.get_ipython()
@@ -1936,7 +1935,7 @@ def test_big_query_magic_bigframes__bigframes_is_not_installed__should_raise_err
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_params():
-    if bpd == None:
+    if bpd is None:
         pytest.skip("BigFrames not installed")
 
     ip = IPython.get_ipython()
@@ -1968,7 +1967,7 @@ def test_big_query_magic_bigframes_with_params():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_max_results():
-    if bpd == None:
+    if bpd is None:
         pytest.skip("BigFrames not installed")
 
     ip = IPython.get_ipython()
@@ -1990,7 +1989,7 @@ def test_big_query_magic_bigframes_with_max_results():
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
-    if bpd == None:
+    if bpd is None:
         pytest.skip("BigFrames not installed")
 
     ip = IPython.get_ipython()
@@ -2010,7 +2009,7 @@ def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials", "bigframes_engine")
 def test_big_query_magic_bigframes_with_dry_run__should_fail():
-    if bpd == None:
+    if bpd is None:
         pytest.skip("BigFrames not installed")
 
     ip = IPython.get_ipython()
