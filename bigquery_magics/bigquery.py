@@ -436,7 +436,7 @@ def _parse_magic_args(line: str) -> Tuple[List[Any], Any]:
 
     args = magic_arguments.parse_argstring(_cell_magic, rest_of_args)
 
-    if args.engine != "bigframes" or args.engine != "pandas":
+    if args.engine is not None and args.engine not in ("pandas", "bigframes"):
         raise ValueError(f"Invalid engine: {args.engine}")
 
     return params, args
