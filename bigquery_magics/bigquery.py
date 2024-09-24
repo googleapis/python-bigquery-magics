@@ -393,9 +393,9 @@ def _cell_magic(line, query):
         return
     query = _validate_and_resolve_query(query, args)
 
-    use_bigframes_engine = args.engine or context.engine
+    engine = args.engine or context.engine
 
-    if use_bigframes_engine == "bigframes":
+    if engine == "bigframes":
         return _query_with_bigframes(query, params, args)
 
     return _query_with_pandas(query, params, args)

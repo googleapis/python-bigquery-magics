@@ -1909,7 +1909,7 @@ def test_bigquery_magic_with_invalid_engine_raises_error():
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes_set_in_context():
+def test_bigquery_magic_bigframes_set_in_context():
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
@@ -1933,7 +1933,7 @@ def test_big_query_magic_bigframes_set_in_context():
 
 
 @pytest.mark.usefixtures("ipython_interactive", "mock_credentials")
-def test_big_query_magic_bigframes_set_in_args():
+def test_bigquery_magic_bigframes_set_in_args():
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
@@ -1959,7 +1959,7 @@ def test_big_query_magic_bigframes_set_in_args():
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes__bigframes_is_not_installed__should_raise_error():
+def test_bigquery_magic_bigframes__bigframes_is_not_installed__should_raise_error():
     if bpd is not None:
         pytest.skip("BigFrames is installed")
 
@@ -1974,7 +1974,7 @@ def test_big_query_magic_bigframes__bigframes_is_not_installed__should_raise_err
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes_with_params():
+def test_bigquery_magic_bigframes_with_params():
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
@@ -2008,7 +2008,7 @@ def test_big_query_magic_bigframes_with_params():
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes_with_max_results():
+def test_bigquery_magic_bigframes_with_max_results():
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
@@ -2032,7 +2032,7 @@ def test_big_query_magic_bigframes_with_max_results():
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
+def test_bigquery_magic_bigframes_with_destination_var(ipython_ns_cleanup):
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
@@ -2054,7 +2054,7 @@ def test_big_query_magic_bigframes_with_destination_var(ipython_ns_cleanup):
 @pytest.mark.usefixtures(
     "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
 )
-def test_big_query_magic_bigframes_with_dry_run__should_fail():
+def test_bigquery_magic_bigframes_with_dry_run__should_fail():
     if bpd is None:
         pytest.skip("BigFrames not installed")
 
