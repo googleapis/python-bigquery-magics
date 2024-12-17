@@ -69,8 +69,10 @@ def test_context_credentials_and_project_can_be_set_explicitly():
 
 def test_context_set_default_variable():
     assert bigquery_magics.context.default_variable is None
+
     bigquery_magics.context.default_variable = "_bq_df"
     assert bigquery_magics.context.default_variable == "_bq_df"
+
     bigquery_magics.context.default_variable = None
     assert bigquery_magics.context.default_variable is None
 
