@@ -395,13 +395,20 @@ def test__create_dataset_if_necessary_not_exist():
         client.create_dataset.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    ("magic_name",),
+    (
+        ("bigquery",),
+        ("bqsql",),
+    ),
+)
 @pytest.mark.usefixtures("ipython_interactive")
-def test_extension_load():
+def test_extension_load(magic_name):
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
 
     # verify that the magic is registered and has the correct source
-    magic = ip.magics_manager.magics["cell"].get("bigquery")
+    magic = ip.magics_manager.magics["cell"].get(magic_name)
     assert magic.__module__ == "bigquery_magics.bigquery"
 
 
@@ -816,6 +823,45 @@ def test_bigquery_magic_w_missing_query():
     assert "Could not save output to variable" in output
     assert "Query is missing" in output
     assert "Traceback (most recent call last)" not in output
+
+
+@pytest.mark.usefixtures("ipython_interactive")
+def test_bigquery_magic_w_table_id_and_default_variable(
+    ipython_ns_cleanup, monkeypatch
+):
+    ip = IPython.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._project = None
+    monkeypatch.setattr(bigquery_magics.context, "default_variable", "_bq_df")
+
+    ipython_ns_cleanup.append((ip, "df"))
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+
+    row_iterator_mock = mock.create_autospec(
+        google.cloud.bigquery.table.RowIterator, instance=True
+    )
+
+    client_patch = mock.patch("bigquery_magics.bigquery.bigquery.Client", autospec=True)
+
+    table_id = "bigquery-public-data.samples.shakespeare"
+    result = pandas.DataFrame([17], columns=["num"])
+
+    with client_patch as client_mock, default_patch:
+        client_mock().list_rows.return_value = row_iterator_mock
+        row_iterator_mock.to_dataframe.return_value = result
+
+        ip.run_cell_magic("bigquery", "", table_id)
+
+    assert "_bq_df" in ip.user_ns
+    df = ip.user_ns["_bq_df"]
+
+    assert isinstance(df, pandas.DataFrame)
 
 
 @pytest.mark.usefixtures("ipython_interactive")
@@ -2048,6 +2094,32 @@ def test_bigquery_magic_bigframes_with_destination_var(ipython_ns_cleanup):
 
         assert "df" in ip.user_ns
         df = ip.user_ns["df"]
+        assert df is bf_mock.return_value
+
+
+@pytest.mark.usefixtures(
+    "ipython_interactive", "mock_credentials", "set_bigframes_engine_in_context"
+)
+def test_bigquery_magic_bigframes_with_default_variable(
+    ipython_ns_cleanup, monkeypatch
+):
+    if bpd is None:
+        pytest.skip("BigFrames not installed")
+
+    monkeypatch.setattr(bigquery_magics.context, "default_variable", "_bq_df")
+
+    ip = IPython.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    sql = "SELECT 0 AS something"
+
+    bf_patch = mock.patch("bigframes.pandas.read_gbq_query", autospec=True)
+    ipython_ns_cleanup.append((ip, "_bq_df"))
+
+    with bf_patch as bf_mock:
+        ip.run_cell_magic("bigquery", "", sql)
+
+        assert "_bq_df" in ip.user_ns
+        df = ip.user_ns["_bq_df"]
         assert df is bf_mock.return_value
 
 
