@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Optional
+import dataclasses
+import enum
+from typing import Optional, Union
 
 import google.api_core.client_options as client_options
 import google.cloud.bigquery as bigquery
@@ -26,7 +27,50 @@ def _get_default_credentials_with_project():
     return pydata_google_auth.default(scopes=_SCOPES, use_local_webserver=False)
 
 
-@dataclass
+class MissingReason(enum.Enum):
+    """Provides a way to disambiguate why an option is missing.
+
+    This is used instead of a None value to allow for custom validation and
+    docs generation.
+    """
+
+    # These missing reasons are because the engine doesn't support the feature,
+    # for example, use_rest_api on the bigframes engine. In this case, raise
+    # if the user has set it, as the magics woult otherwise act in a way
+    # contrary to that in which the user explicitly requested.
+    NOT_SUPPORTED_BY_ENGINE_INFEASIBLE = enum.auto()
+
+    # This is like the above, but is theoretically possible. Include a call to
+    # action to reach out to the bigframes team if this is a feature they
+    # would like to use.
+    NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE = enum.auto()
+
+    # This missing reason is for options that are magics-only and apply to all
+    # engines. For example, the destination variable is a magics-only setting
+    # and doesn't affect how queries are handled by the engine.
+    ENGINE_UNIVERSAL = enum.auto()
+
+
+@dataclasses.dataclass(frozen=True)
+class MagicsSetting:
+    """Encapsulates information about settings and how to set them.
+
+    This is used to generate documentation, merge settings across the various
+    ways they are duplicated, and to validate settings provided by a user.
+    """
+
+    description: str
+    cell_arg: Union[MissingReason, str]
+    magics_context: Union[MissingReason, str]
+    bigframes_option: Union[MissingReason, str]
+
+
+magics_settings = [
+    # TODO: copy table from sheets to here
+]
+
+
+@dataclasses.dataclass
 class Context(object):
     """Storage for objects to be used throughout an IPython notebook session.
 
