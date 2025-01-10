@@ -21,6 +21,7 @@ __version__ = bigquery_magics.version.__version__
 # Whether the magics has already been reigstered by some other packages.
 is_registered = False
 
+
 def load_ipython_extension(ipython):
     """Called by IPython when this module is loaded as an IPython extension."""
     # Import here to avoid circular imports.
