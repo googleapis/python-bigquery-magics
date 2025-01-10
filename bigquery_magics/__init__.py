@@ -36,11 +36,17 @@ def load_ipython_extension(ipython):
     is_registered = True
 
 
+def unload_ipython_extension(ipython):
+    global is_registered
+    is_registered = False
+
+
 __all__ = (
     # For backwards compatibility we need to make the context available in
     # the path google.cloud.bigquery.magics.context.
     "context",
     "__version__",
     "load_ipython_extension",
+    "unload_ipython_extension",
     "is_registered",
 )

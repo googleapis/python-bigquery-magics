@@ -74,6 +74,8 @@ def ipython_interactive(request, ipython):
     with ipython.builtin_trap:
         yield ipython
 
+        ipython.get_ipython().extension_manager.unload_extension("bigquery_magics")
+
 
 @pytest.fixture()
 def ipython_ns_cleanup():
