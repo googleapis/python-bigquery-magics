@@ -2015,7 +2015,9 @@ def test_bigquery_magic_bigframes__bigframes_is_not_installed__should_raise_erro
     ip.extension_manager.load_extension("bigquery_magics")
     sql = "SELECT 0 AS something"
 
-    with pytest.raises(ValueError, match="Bigframes package is not installed."):
+    with pytest.raises(
+        ValueError, match=re.escape("Please install the 'bigframes' package")
+    ):
         ip.run_cell_magic("bigquery", "", sql)
 
 

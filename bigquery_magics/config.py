@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Optional
+import dataclasses
+import enum
+from typing import Optional, Union
 
 import google.api_core.client_options as client_options
 import google.cloud.bigquery as bigquery
@@ -25,15 +26,17 @@ _SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 def _get_default_credentials_with_project():
     return pydata_google_auth.default(scopes=_SCOPES, use_local_webserver=False)
 
+
 class MissingReason(enum.Enum):
     """Provides a way to disambiguate why an option is missing.
+
     This is used instead of a None value to allow for custom validation and
     docs generation.
     """
 
     # These missing reasons are because the engine doesn't support the feature,
     # for example, use_rest_api on the bigframes engine. In this case, raise
-    # if the user has set it, as the magics woult otherwise act in a way
+    # if the user has set it, as the magics would otherwise act in a way
     # contrary to that in which the user explicitly requested.
     NOT_SUPPORTED_BY_ENGINE_INFEASIBLE = enum.auto()
 
@@ -51,6 +54,7 @@ class MissingReason(enum.Enum):
 @dataclasses.dataclass(frozen=True)
 class MagicsSetting:
     """Encapsulates information about settings and how to set them.
+
     This is used to generate documentation, merge settings across the various
     ways they are duplicated, and to validate settings provided by a user.
     """
@@ -62,7 +66,108 @@ class MagicsSetting:
 
 
 magics_settings = [
-    # TODO: copy table from sheets to here
+  MagicsSetting(
+      description="Limits the number of rows in the returned DataFrame.",
+      cell_arg="--max_results",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option="read_gbq_query.max_results"
+  ),
+
+  MagicsSetting(
+      description="Max bytes billed to use for executing a query.",
+      cell_arg="--maximum_bytes_billed",
+      magics_context="default_query_job_config",
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE
+  ),
+
+  MagicsSetting(
+      description="Set it to a query to estimate costs.",
+      cell_arg="--dry_run",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option="read_gbq_query"
+  ),
+
+  MagicsSetting(
+      description="Set it to use instead of Standard SQL.",
+      cell_arg="--use_legacy_sql",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE
+  ),
+
+  MagicsSetting(
+      description="BigQuery REST API endpoint.",
+      cell_arg="--bigquery_api_endpoint",
+      magics_context="bqstorage_client_options",
+      bigframes_option="bigquery.client_endpoints_override['bqclient']"
+  ),
+
+  MagicsSetting(
+      description="BigQery Storage API endpoint.",
+      cell_arg="--bqstorage_api_endpoint",
+      magics_context="bqstorage_client_options",
+      bigframes_option="bigquery.client_endpoints_override['bqclient']"
+  ),
+
+  MagicsSetting(
+      description="Do not use cached query results.",
+      cell_arg="--no_query_cache",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option="read_gbq_query.use_cache"
+  ),
+
+  MagicsSetting(
+      description="[Deprecated] Default is BigQuery Storage API.",
+      cell_arg="--use_bqstorage_api",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_INFEASIBLE
+  ),
+
+  MagicsSetting(
+      description="Use the BigQuery REST API to download results instead of "
+      "the BigQuery Storage Read API.",
+      cell_arg="--use_rest_api",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_INFEASIBLE
+  ),
+
+  MagicsSetting(
+      description="Print verbose output, including the query job ID and the"
+      "amount of time for the query to finish.",
+      cell_arg="--verbose",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE
+  ),
+
+  MagicsSetting(
+      description=
+      "To format the query string. Should be followed by a string representation "
+      "of a dictionary or a reference to a dictionary in the same format by "
+      "including $ before the variable.",
+      cell_arg="--params",
+      magics_context="default_query_job_config",
+      bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE
+  ),
+
+  MagicsSetting(
+      description="To display a progress bar while executing the query.",
+      cell_arg="--progress_bar_type",
+      magics_context="progress_bar_type",
+      bigframes_option="progress_bar"
+  ),
+
+  MagicsSetting(
+      description="Location to execute query.",
+      cell_arg="--location",
+      magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+      bigframes_option="location"
+  ),
+
+  MagicsSetting(
+      description="Set execution engine, either 'pandas' or 'bigframes'.",
+      cell_arg="--engine",
+      magics_context="engine",
+      bigframes_option=MissingReason.ENGINE_UNIVERSAL
+  )
 ]
 
 
