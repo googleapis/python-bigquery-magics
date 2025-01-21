@@ -73,6 +73,25 @@ class MagicsSetting:
 
 magics_settings = [
     MagicsSetting(
+        description="Destination variable name.",
+        cell_arg="destination_var",
+        magics_context="default_variable",
+        bigframes_option=MissingReason.ENGINE_UNIVERSAL,
+    ),
+    MagicsSetting(
+        description="To save the output of the query to a new BigQuery table.",
+        cell_arg="--destination_table",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="Project to use for executing this query. Defaults to the"
+        " context project.",
+        cell_arg="--project",
+        magics_context="project",
+        bigframes_option="bigquery.project",
+    ),
+    MagicsSetting(
         description="Limits the number of rows in the returned DataFrame.",
         cell_arg="--max_results",
         magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
@@ -338,7 +357,7 @@ class Context(object):
         If using "bigframes", the query result will be stored in a bigframes dataframe instead.
 
         Example:
-            Manully setting the content engine:
+            Manually setting the content engine:
 
             >>> from google.cloud.bigquery import magics
             >>> bigquery_magics.context.engine = 'bigframes'
