@@ -53,7 +53,7 @@
         amount of time for the query to complete will not be cleared after the
         query is finished. By default, this information will be displayed but
         will be cleared after the query is finished.
-    * ``--use_geodataframe <params>``(Optional[line argument]):
+    * ``--use_geodataframe <params>`` (Optional[line argument]):
         Return the query result as a geopandas.GeoDataFrame.
         If present, the argument that follows the ``--use_geodataframe`` flag
         must be a string representing column names to use as the active
