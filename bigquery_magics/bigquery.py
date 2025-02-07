@@ -53,6 +53,8 @@
         amount of time for the query to complete will not be cleared after the
         query is finished. By default, this information will be displayed but
         will be cleared after the query is finished.
+    * ``--graph`` (Optional[line argument]):
+        Visualizes the query result as a graph.
     * ``--params <params>`` (Optional[line argument]):
         If present, the argument following the ``--params`` flag must be
         either:
@@ -87,6 +89,8 @@ from __future__ import print_function
 import ast
 from concurrent import futures
 import copy
+import json
+import pandas
 import re
 import sys
 import time
@@ -95,6 +99,7 @@ import warnings
 
 import IPython  # type: ignore
 from IPython import display  # type: ignore
+from IPython.core.display import HTML, JSON
 from IPython.core import magic_arguments  # type: ignore
 from IPython.core.getipython import get_ipython
 from google.api_core import client_info
@@ -110,6 +115,9 @@ import bigquery_magics._versions_helpers
 import bigquery_magics.config
 import bigquery_magics.line_arg_parser.exceptions
 import bigquery_magics.version
+from bigquery_magics.graph_server import GraphServer, convert_graph_data
+
+from threading import Thread
 
 try:
     from google.cloud import bigquery_storage  # type: ignore
@@ -371,6 +379,13 @@ def _create_dataset_if_necessary(client, dataset_id):
         "Defaults to engine set in the query setting in console."
     ),
 )
+@magic_arguments.argument(
+    "--graph",
+    action="store_true",
+    default=False,
+    help=("Visualizes the query results as a graph"),
+    
+)
 def _cell_magic(line, query):
     """Underlying function for bigquery cell magic
 
@@ -405,7 +420,7 @@ def _cell_magic(line, query):
 
 def _parse_magic_args(line: str) -> Tuple[List[Any], Any]:
     # The built-in parser does not recognize Python structures such as dicts, thus
-    # we extract the "--params" option and inteprpret it separately.
+    # we extract the "--params" option and interpret it separately.
     try:
         params_option_value, rest_of_args = _split_args_line(line)
 
@@ -566,6 +581,64 @@ def _handle_result(result, args):
     return result
 
 
+def _is_colab() -> bool:
+    """Check if code is running in Google Colab"""
+    try:
+        import google.colab
+        return True
+    except ImportError:
+        return False
+
+def _colab_callback(query: str, params: str):
+    return JSON(convert_graph_data(query_results=json.loads(params)))
+
+
+singleton_server_thread: Thread = None
+
+def _add_graph_widget(query_result):
+    try:
+        from spanner_graphs.graph_visualization import generate_visualization_html
+    except ImportError as err:
+        customized_error = ImportError(
+            "Use of --graph requires the spanner-graph package to be installed."
+        )
+        raise customized_error from err
+
+    # In Jupyter, create an http server to be invoked from the Javascript to populate the
+    # visualizer widget. In colab, we are not able to create an http server on a
+    # background thread, so we use a special colab-specific api to register a callback,
+    # to be invoked from Javascript.
+    if _is_colab():
+        from google.colab import output
+        output.register_callback('graph_visualization.Query', _colab_callback)
+    else:
+        global singleton_server_thread
+        alive = singleton_server_thread and singleton_server_thread.is_alive()
+        if not alive:
+            singleton_server_thread = GraphServer.init()
+
+    # Create html to invoke the graph server
+    html_content = generate_visualization_html(
+        query='dummy query',
+        port=GraphServer.port,
+        params=query_result.to_json().replace('\\', '\\\\').replace('"', '\\"')
+    )
+    display.display(HTML(html_content))
+
+def _is_valid_json(s: str):
+    try:
+        json.loads(s)
+        return True
+    except (json.JSONDecodeError, TypeError):
+        return False
+
+def _supports_graph_widget(query_result: pandas.DataFrame):
+    num_rows, num_columns = query_result.shape
+    if num_columns != 1:
+        return False
+    return query_result[query_result.columns[0]].apply(_is_valid_json).all()
+
+
 def _make_bq_query(
     query: str,
     args: Any,
@@ -645,6 +718,8 @@ def _make_bq_query(
             progress_bar_type=progress_bar,
         )
 
+    if args.graph and _supports_graph_widget(result):
+        _add_graph_widget(result)
     return _handle_result(result, args)
 
 
