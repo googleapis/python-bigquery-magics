@@ -58,16 +58,19 @@ UNIT_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
     "3.9": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
     "3.10": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
     "3.11": [],
     "3.12": [],
     "3.13": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
 }
 
@@ -91,16 +94,19 @@ SYSTEM_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
     "3.9": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
     "3.10": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
     "3.11": [],
     "3.12": [],
     "3.13": [
         "bqstorage",
         "bigframes",
+        "geopandas",
     ],
 }
 
