@@ -51,7 +51,7 @@ except ImportError:
 try:
     import spanner_graphs.graph_visualization as graph_visualization
 except ImportError:
-    spanner_graphs = None
+    graph_visualization = None
 
 
 def make_connection(*args):
@@ -454,6 +454,54 @@ def test_bigquery_magic_without_optional_arguments(monkeypatch):
     with run_query_patch as run_query_mock, bqstorage_client_patch:
         run_query_mock.return_value = query_job_mock
         return_value = ip.run_cell_magic("bigquery", "", sql)
+
+    assert bqstorage_mock.called  # BQ storage client was used
+    assert isinstance(return_value, pandas.DataFrame)
+    assert len(return_value) == len(result)  # verify row count
+    assert list(return_value) == list(result)  # verify column names
+
+
+@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.skipif(
+    graph_visualization is not None or bigquery_storage is None, reason="Requires `spanner-graph-notebook` to be missing and `google-cloud-bigquery-storage` to be present"
+)
+def test_bigquery_graph_spanner_graph_notebook_missing(monkeypatch):
+    ip = IPython.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    mock_credentials = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+
+    # Set up the context with monkeypatch so that it's reset for subsequent
+    # tests.
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
+
+    # Mock out the BigQuery Storage API.
+    bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
+    bqstorage_instance_mock = mock.create_autospec(
+        bigquery_storage.BigQueryReadClient, instance=True
+    )
+    bqstorage_instance_mock._transport = mock.Mock()
+    bqstorage_mock.return_value = bqstorage_instance_mock
+    bqstorage_client_patch = mock.patch(
+        "google.cloud.bigquery_storage.BigQueryReadClient", bqstorage_mock
+    )
+    display_patch = mock.patch("IPython.display.display", autospec=True)
+
+    sql = "SELECT 3 AS result"
+    result = pandas.DataFrame(['abc'], columns=["s"])
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    query_job_mock = mock.create_autospec(
+        google.cloud.bigquery.job.QueryJob, instance=True
+    )
+    query_job_mock.to_dataframe.return_value = result
+
+    with run_query_patch as run_query_mock, bqstorage_client_patch, display_patch as display_mock:
+        run_query_mock.return_value = query_job_mock
+        return_value = ip.run_cell_magic("bigquery", "--graph", sql)
+
+        # Since the query result is not valid JSON, the visualizer should not be displayed.
+        display_mock.assert_not_called()
 
     assert bqstorage_mock.called  # BQ storage client was used
     assert isinstance(return_value, pandas.DataFrame)

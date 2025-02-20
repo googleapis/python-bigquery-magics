@@ -42,7 +42,7 @@ import bigquery_magics.bigquery as magics
 try:
     import spanner_graphs.graph_visualization as graph_visualization
 except ImportError:
-    spanner_graphs = None
+    graph_visualization = None
 
 from bigquery_magics.graph_server import convert_graph_data
 
@@ -155,6 +155,7 @@ def _validate_nodes_and_edges(result):
         assert 'properties' in node
         assert 'value' in node
 
+@pytest.mark.skipif(graph_visualization is None, reason="Requires `spanner-graph-notebook`")
 def test_convert_one_column_no_rows():
     result = convert_graph_data({'result': {}})
     assert result == {
@@ -167,6 +168,7 @@ def test_convert_one_column_no_rows():
         }
     }
 
+@pytest.mark.skipif(graph_visualization is None, reason="Requires `spanner-graph-notebook`")
 def test_convert_one_column_one_row():
     result = convert_graph_data({'result': {
         '0': json.dumps(row_alex_owns_account),
@@ -181,6 +183,7 @@ def test_convert_one_column_one_row():
     assert result['response']['rows'] == [[row_alex_owns_account]]
     assert result['response']['schema'] is None
 
+@pytest.mark.skipif(graph_visualization is None, reason="Requires `spanner-graph-notebook`")
 def test_convert_one_column_two_rows():
     result = convert_graph_data({'result': {
         '0': json.dumps(row_alex_owns_account),
@@ -196,6 +199,7 @@ def test_convert_one_column_two_rows():
     assert result['response']['rows'] == [[row_alex_owns_account], [row_lee_owns_account]]
     assert result['response']['schema'] is None
 
+@pytest.mark.skipif(graph_visualization is None, reason="Requires `spanner-graph-notebook`")
 def test_convert_nongraph_json():
     # If we have valid json that doesn't represent a graph, we don't expect to get nodes and edges,
     # but we should at least have row data, allowing the tabular view to work.
