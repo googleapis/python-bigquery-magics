@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import http.server
-import socketserver
-import json
-import threading
-import requests
-import portpicker
-from networkx.classes import DiGraph
-from typing import List
 import atexit
+import http.server
+import json
+import socketserver
+import threading
+from typing import List
+
+from networkx.classes import DiGraph
+import portpicker
+import requests
 
 
 def convert_graph_data(query_results: dict[str, dict[str, str]]):
@@ -51,8 +52,11 @@ def convert_graph_data(query_results: dict[str, dict[str, str]]):
     # Note that these imports do not need to be in a try/except, as this function
     # does not even get called unless spanner_graphs has already been confirmed
     # to exist upstream.
-    from google.cloud.spanner_v1.types import StructType, TypeCode, Type
-    from spanner_graphs.conversion import prepare_data_for_graphing, columns_to_native_numpy
+    from google.cloud.spanner_v1.types import StructType, Type, TypeCode
+    from spanner_graphs.conversion import (
+        columns_to_native_numpy,
+        prepare_data_for_graphing,
+    )
 
     try:
         column_name = None
@@ -60,44 +64,50 @@ def convert_graph_data(query_results: dict[str, dict[str, str]]):
         for key, value in query_results.items():
             if column_name == None:
                 if not isinstance(key, str):
-                    raise ValueError(f'Expected key to be str, got {type(key)}')
+                    raise ValueError(f"Expected key to be str, got {type(key)}")
                 if not isinstance(value, dict):
-                    raise ValueError(f'Expected value to be dict, got {type(value)}')
+                    raise ValueError(f"Expected value to be dict, got {type(value)}")
                 column_name = key
                 column_value = value
             else:
-                raise ValueError('Query has multiple columns - graph visualization not supported')
+                raise ValueError(
+                    "Query has multiple columns - graph visualization not supported"
+                )
         if column_name is None or column_value is None:
-            raise ValueError('Unable to get column name or value - how is this possible???')
+            raise ValueError(
+                "Unable to get column name or value - how is this possible???"
+            )
 
-        fields: List[StructType.Field] = [StructType.Field(name=column_name, type=Type(code=TypeCode.JSON))]
-        data = {column_name : []}
+        fields: List[StructType.Field] = [
+            StructType.Field(name=column_name, type=Type(code=TypeCode.JSON))
+        ]
+        data = {column_name: []}
         rows = []
         for value_key, value_value in column_value.items():
             if not isinstance(value_key, str):
-                raise ValueError(f'Expected key to be str, got {type(key)}')
+                raise ValueError(f"Expected key to be str, got {type(key)}")
             if not isinstance(value_value, str):
-                raise ValueError(f'Expected value to be str, got {type(value)}')
+                raise ValueError(f"Expected value to be str, got {type(value)}")
             row_index = int(value_key)
             row_json = json.loads(value_value)
 
             if row_index != len(data[column_name]):
-                raise ValueError(f'Unexpected row index; expected {len(data[column_name])}, got {row_index}')
+                raise ValueError(
+                    f"Unexpected row index; expected {len(data[column_name])}, got {row_index}"
+                )
             data[column_name].append(row_json)
             rows.append([row_json])
 
         d, ignored_columns = columns_to_native_numpy(data, fields)
 
-        graph: DiGraph = prepare_data_for_graphing(
-            incoming=d,
-            schema_json=None)
+        graph: DiGraph = prepare_data_for_graphing(incoming=d, schema_json=None)
 
         nodes = []
-        for (node_id, node) in graph.nodes(data=True):
+        for node_id, node in graph.nodes(data=True):
             nodes.append(node)
 
         edges = []
-        for (from_id, to_id, edge) in graph.edges(data=True):
+        for from_id, to_id, edge in graph.edges(data=True):
             edges.append(edge)
 
         return {
@@ -106,17 +116,16 @@ def convert_graph_data(query_results: dict[str, dict[str, str]]):
                 "edges": edges,
                 "schema": None,
                 "rows": rows,
-                "query_result": data
+                "query_result": data,
             }
         }
     except Exception as e:
-        return {
-            "error": getattr(e, "message", str(e))
-        }
+        return {"error": getattr(e, "message", str(e))}
+
 
 class GraphServer:
     port = portpicker.pick_unused_port()
-    host = 'http://localhost'
+    host = "http://localhost"
     url = f"{host}:{port}"
 
     endpoints = {
@@ -177,6 +186,7 @@ class GraphServer:
             print(f"Request failed with status code {response.status_code}")
             return False
 
+
 class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -184,34 +194,32 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     def do_json_response(self, data):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header('Content-type', 'application/json')
+        self.send_header("Content-type", "application/json")
         self.send_header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
     def do_message_response(self, message):
-        self.do_json_response({'message': message})
+        self.do_json_response({"message": message})
 
     def do_data_response(self, data):
         self.do_json_response(data)
 
     def parse_post_data(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode('utf-8')
+        content_length = int(self.headers["Content-Length"])
+        post_data = self.rfile.read(content_length).decode("utf-8")
         return json.loads(post_data)
 
     def handle_get_ping(self):
-        self.do_message_response('pong')
+        self.do_message_response("pong")
 
     def handle_post_ping(self):
         data = self.parse_post_data()
-        self.do_data_response({'your_request': data})
+        self.do_data_response({"your_request": data})
 
     def handle_post_query(self):
         data = self.parse_post_data()
-        response = convert_graph_data(
-            query_results=json.loads(data['params'])
-        )
+        response = convert_graph_data(query_results=json.loads(data["params"]))
         self.do_data_response(response)
 
     def do_GET(self):

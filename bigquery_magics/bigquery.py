@@ -90,17 +90,17 @@ import ast
 from concurrent import futures
 import copy
 import json
-import pandas
 import re
 import sys
+from threading import Thread
 import time
 from typing import Any, List, Tuple
 import warnings
 
 import IPython  # type: ignore
 from IPython import display  # type: ignore
-from IPython.core.display import HTML, JSON
 from IPython.core import magic_arguments  # type: ignore
+from IPython.core.display import HTML, JSON
 from IPython.core.getipython import get_ipython
 from google.api_core import client_info
 from google.api_core.exceptions import NotFound
@@ -109,15 +109,14 @@ from google.cloud.bigquery import exceptions
 from google.cloud.bigquery.dataset import DatasetReference
 from google.cloud.bigquery.dbapi import _helpers
 from google.cloud.bigquery.job import QueryJobConfig
+import pandas
 
 from bigquery_magics import line_arg_parser as lap
 import bigquery_magics._versions_helpers
 import bigquery_magics.config
+from bigquery_magics.graph_server import GraphServer, convert_graph_data
 import bigquery_magics.line_arg_parser.exceptions
 import bigquery_magics.version
-from bigquery_magics.graph_server import GraphServer, convert_graph_data
-
-from threading import Thread
 
 try:
     from google.cloud import bigquery_storage  # type: ignore
@@ -384,7 +383,6 @@ def _create_dataset_if_necessary(client, dataset_id):
     action="store_true",
     default=False,
     help=("Visualizes the query results as a graph"),
-    
 )
 def _cell_magic(line, query):
     """Underlying function for bigquery cell magic
@@ -585,15 +583,18 @@ def _is_colab() -> bool:
     """Check if code is running in Google Colab"""
     try:
         import google.colab
+
         return True
     except ImportError:
         return False
+
 
 def _colab_callback(query: str, params: str):
     return JSON(convert_graph_data(query_results=json.loads(params)))
 
 
 singleton_server_thread: Thread = None
+
 
 def _add_graph_widget(query_result):
     try:
@@ -610,7 +611,8 @@ def _add_graph_widget(query_result):
     # to be invoked from Javascript.
     if _is_colab():
         from google.colab import output
-        output.register_callback('graph_visualization.Query', _colab_callback)
+
+        output.register_callback("graph_visualization.Query", _colab_callback)
     else:
         global singleton_server_thread
         alive = singleton_server_thread and singleton_server_thread.is_alive()
@@ -619,11 +621,12 @@ def _add_graph_widget(query_result):
 
     # Create html to invoke the graph server
     html_content = generate_visualization_html(
-        query='dummy query',
+        query="dummy query",
         port=GraphServer.port,
-        params=query_result.to_json().replace('\\', '\\\\').replace('"', '\\"')
+        params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
     )
     display.display(HTML(html_content))
+
 
 def _is_valid_json(s: str):
     try:
@@ -631,6 +634,7 @@ def _is_valid_json(s: str):
         return True
     except (json.JSONDecodeError, TypeError):
         return False
+
 
 def _supports_graph_widget(query_result: pandas.DataFrame):
     num_rows, num_columns = query_result.shape
