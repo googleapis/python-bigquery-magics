@@ -55,6 +55,14 @@
         will be cleared after the query is finished.
     * ``--graph`` (Optional[line argument]):
         Visualizes the query result as a graph.
+    * ``--use_geodataframe <params>`` (Optional[line argument]):
+        Return the query result as a geopandas.GeoDataFrame.
+        If present, the argument that follows the ``--use_geodataframe`` flag
+        must be a string representing column names to use as the active
+        geometry.
+
+        See geopandas.GeoDataFrame for details.
+        The Coordinate Reference System will be set to “EPSG:4326”.
     * ``--params <params>`` (Optional[line argument]):
         If present, the argument following the ``--params`` flag must be
         either:
@@ -77,7 +85,8 @@
 
     Returns:
         A :class:`pandas.DataFrame` or :class:`bigframes.pandas.DataFrame`
-        with the query results, depending on the ``engine`` chosen.
+        with the query results, depending on the ``engine`` chosen or if
+        ``--as_geodataframe`` was provided.
 
     .. note::
         All queries run using this magic will run using the context
@@ -348,6 +357,16 @@ def _create_dataset_if_necessary(client, dataset_id):
         "or a reference to a dictionary in the same format. The dictionary "
         "reference can be made by including a '$' before the variable "
         "name (ex. $my_dict_var)."
+    ),
+)
+@magic_arguments.argument(
+    "--use_geodataframe",
+    type=str,
+    default=None,
+    help=(
+        "Return the query result as a geopandas.GeoDataFrame.  If present, the "
+        "--use_geodataframe flag should be followed by a string name of the "
+        "column."
     ),
 )
 @magic_arguments.argument(
@@ -651,6 +670,7 @@ def _make_bq_query(
     bqstorage_client: Any,
 ):
     max_results = int(args.max_results) if args.max_results else None
+    geography_column = args.use_geodataframe
 
     # Any query that does not contain whitespace (aside from leading and trailing whitespace)
     # is assumed to be a table id
@@ -708,19 +728,24 @@ def _make_bq_query(
             return query_job
 
     progress_bar = context.progress_bar_type or args.progress_bar_type
-
+    dataframe_kwargs = {
+        "bqstorage_client": bqstorage_client,
+        "create_bqstorage_client": False,
+        "progress_bar_type": progress_bar,
+    }
     if max_results:
-        result = query_job.result(max_results=max_results).to_dataframe(
-            bqstorage_client=None,
-            create_bqstorage_client=False,
-            progress_bar_type=progress_bar,
+        dataframe_kwargs["bqstorage_client"] = None
+
+    result = query_job
+    if max_results:
+        result = result.result(max_results=max_results)
+
+    if geography_column:
+        result = result.to_geodataframe(
+            geography_column=geography_column, **dataframe_kwargs
         )
     else:
-        result = query_job.to_dataframe(
-            bqstorage_client=bqstorage_client,
-            create_bqstorage_client=False,
-            progress_bar_type=progress_bar,
-        )
+        result = result.to_dataframe(**dataframe_kwargs)
 
     if args.graph and _supports_graph_widget(result):
         _add_graph_widget(result)
