@@ -53,7 +53,8 @@ UNIT_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
         "bqstorage",
     ],
     "3.8": [
-        "bqstorage",
+        "['bqstorage']",
+        "['spanner_graphs']",
     ],
     "3.9": [
         "bqstorage",
@@ -89,7 +90,8 @@ SYSTEM_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
         "bqstorage",
     ],
     "3.8": [
-        "bqstorage",
+        "['bqstorage']",
+        "['spanner_graphs']",
     ],
     "3.9": [
         "bqstorage",
