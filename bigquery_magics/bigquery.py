@@ -620,7 +620,7 @@ def _add_graph_widget(query_result):
         from spanner_graphs.graph_visualization import generate_visualization_html
     except ImportError as err:
         customized_error = ImportError(
-            "Use of --graph requires the spanner-graph package to be installed."
+            "Use of --graph requires the spanner_graphs package to be installed."
         )
         raise customized_error from err
 
