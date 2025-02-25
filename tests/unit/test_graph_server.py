@@ -12,32 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from concurrent import futures
-import contextlib
-import copy
 import json
-import re
-from unittest import mock
-import warnings
-
-import IPython
-import IPython.terminal.interactiveshell as interactiveshell
-import IPython.testing.tools as tools
-import IPython.utils.io as io
-from google.api_core import exceptions
-import google.auth.credentials
-from google.cloud import bigquery
-from google.cloud.bigquery import exceptions as bq_exceptions
-from google.cloud.bigquery import job, table
-import google.cloud.bigquery._http
-import google.cloud.bigquery.exceptions
-from google.cloud.bigquery.retry import DEFAULT_TIMEOUT
-import pandas
 import pytest
-import test_utils.imports  # google-cloud-testutils
-
-import bigquery_magics
-import bigquery_magics.bigquery as magics
 
 try:
     import spanner_graphs.graph_visualization as graph_visualization

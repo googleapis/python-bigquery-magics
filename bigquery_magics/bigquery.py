@@ -601,7 +601,7 @@ def _handle_result(result, args):
 def _is_colab() -> bool:
     """Check if code is running in Google Colab"""
     try:
-        import google.colab
+        import google.colab  # noqa: F401
 
         return True
     except ImportError:

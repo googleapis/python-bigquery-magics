@@ -17,14 +17,14 @@ import http.server
 import json
 import socketserver
 import threading
-from typing import List
+from typing import Dict, List
 
 from networkx.classes import DiGraph
 import portpicker
 import requests
 
 
-def convert_graph_data(query_results: dict[str, dict[str, str]]):
+def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     """
     Converts graph data to the form expected by the visualization framework.
 
@@ -62,7 +62,7 @@ def convert_graph_data(query_results: dict[str, dict[str, str]]):
         column_name = None
         column_value = None
         for key, value in query_results.items():
-            if column_name == None:
+            if column_name is None:
                 if not isinstance(key, str):
                     raise ValueError(f"Expected key to be str, got {type(key)}")
                 if not isinstance(value, dict):
