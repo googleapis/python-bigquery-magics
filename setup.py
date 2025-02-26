@@ -58,6 +58,7 @@ extras = {
     ],
     "bigframes": ["bigframes >= 1.17.0"],
     "geopandas": ["geopandas >= 1.0.1"],
+    "spanner_graphs": ["spanner_graphs >= 1.1.1"],
 }
 
 all_extras = []
