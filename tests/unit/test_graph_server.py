@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import json
-import pytest
 import unittest
+
+import pytest
 
 try:
     import spanner_graphs.graph_visualization as graph_visualization
 except ImportError:
     graph_visualization = None
 
-from bigquery_magics.graph_server import convert_graph_data, GraphServer
+from bigquery_magics.graph_server import GraphServer, convert_graph_data
 
 alex_properties = {
     "birthday": "1991-12-21T08:00:00Z",
