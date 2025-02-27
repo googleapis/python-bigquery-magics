@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import json
-
 import pytest
+import unittest
 
 try:
     import spanner_graphs.graph_visualization as graph_visualization
 except ImportError:
     graph_visualization = None
 
-from bigquery_magics.graph_server import convert_graph_data
+from bigquery_magics.graph_server import convert_graph_data, GraphServer
 
 alex_properties = {
     "birthday": "1991-12-21T08:00:00Z",
@@ -214,3 +214,22 @@ def test_convert_nongraph_json():
     assert result["response"]["query_result"] == {"result": [{"foo": 1, "bar": 2}]}
     assert result["response"]["rows"] == [[{"foo": 1, "bar": 2}]]
     assert result["response"]["schema"] is None
+
+
+class TestGraphServer(unittest.TestCase):
+    def setUp(self):
+        self.server_thread = GraphServer.init()
+
+    def tearDown(self):
+        GraphServer.stop_server()  # Stop the server after each test
+        self.server_thread.join()  # Wait for the thread to finish
+
+    def test_ping(self):
+        self.assertTrue(self.server_thread.is_alive())
+
+        response = GraphServer.get_ping()
+        self.assertEqual(response, {"message": "pong"})
+
+        request = {"data": "ping"}
+        response = GraphServer.post_ping(request)
+        self.assertEqual(response, {"your_request": request})

@@ -162,7 +162,7 @@ class GraphServer:
     def stop_server():
         if GraphServer._server:
             GraphServer._server.shutdown()
-            print("Spanner Graph Notebook shutting down...")
+            print("BigQuery-magics graph server shutting down...")
 
     @staticmethod
     def get_ping():
