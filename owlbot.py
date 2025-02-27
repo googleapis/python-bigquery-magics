@@ -38,7 +38,7 @@ extras_by_python = {
     "3.10": extras_bf,
     # Use a middle version of Python to test when no extras are installed.
     "3.11": [],
-    "3.12": [extras_storage + extras_spanner],
+    "3.12": extras_storage + extras_spanner,
     "3.13": extras_bf,
 }
 templated_files = common.py_library(
