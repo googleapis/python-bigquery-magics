@@ -30,7 +30,7 @@ common = gcp.CommonTemplates()
 
 extras_storage = ["bqstorage"]
 extras_bf = ["bqstorage", "bigframes", "geopandas"]
-extras_spanner = ["spanner_graphs"]
+extras_spanner = ["spanner-graph-notebook"]
 extras_by_python = {
     "3.7": extras_storage,
     "3.8": extras_storage,
