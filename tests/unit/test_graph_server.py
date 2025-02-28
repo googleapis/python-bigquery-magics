@@ -222,11 +222,12 @@ def test_convert_nongraph_json():
 )
 def test_convert_outer_key_not_string():
     result = convert_graph_data(
-            {
-                0: {
-                    '0': json.dumps({"foo": 1, "bar": 2}),
-                }
-            })
+        {
+            0: {
+                "0": json.dumps({"foo": 1, "bar": 2}),
+            }
+        }
+    )
     assert result == {"error": "Expected outer key to be str, got <class 'int'>"}
 
 
@@ -234,10 +235,7 @@ def test_convert_outer_key_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_outer_value_not_dict():
-    result = convert_graph_data(
-            {
-                'result': 0
-            })
+    result = convert_graph_data({"result": 0})
     assert result == {"error": "Expected outer value to be dict, got <class 'int'>"}
 
 
@@ -246,11 +244,12 @@ def test_convert_outer_value_not_dict():
 )
 def test_convert_inner_key_not_string():
     result = convert_graph_data(
-            {
-                'result': {
-                    0: json.dumps({"foo": 1, "bar": 2}),
-                }
-            })
+        {
+            "result": {
+                0: json.dumps({"foo": 1, "bar": 2}),
+            }
+        }
+    )
     assert result == {"error": "Expected inner key to be str, got <class 'int'>"}
 
 
@@ -259,11 +258,12 @@ def test_convert_inner_key_not_string():
 )
 def test_convert_inner_value_not_string():
     result = convert_graph_data(
-            {
-                'result': {
-                    '0': 1,
-                }
-            })
+        {
+            "result": {
+                "0": 1,
+            }
+        }
+    )
     assert result == {"error": "Expected inner value to be str, got <class 'int'>"}
 
 
@@ -278,11 +278,12 @@ def test_convert_one_column_one_row_two_columns():
             },
             "result2": {
                 "0": json.dumps(row_alex_owns_account),
-            }
-
+            },
         }
     )
-    assert result == {"error": "Query has multiple columns - graph visualization not supported"}
+    assert result == {
+        "error": "Query has multiple columns - graph visualization not supported"
+    }
 
 
 @pytest.mark.skipif(
@@ -290,7 +291,9 @@ def test_convert_one_column_one_row_two_columns():
 )
 def test_convert_empty_dict():
     result = convert_graph_data({})
-    assert result == {"error": "query result with no columns is not supported for graph visualization"}
+    assert result == {
+        "error": "query result with no columns is not supported for graph visualization"
+    }
 
 
 class TestGraphServer(unittest.TestCase):

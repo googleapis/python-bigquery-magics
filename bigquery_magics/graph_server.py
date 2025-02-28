@@ -66,7 +66,9 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 if not isinstance(key, str):
                     raise ValueError(f"Expected outer key to be str, got {type(key)}")
                 if not isinstance(value, dict):
-                    raise ValueError(f"Expected outer value to be dict, got {type(value)}")
+                    raise ValueError(
+                        f"Expected outer value to be dict, got {type(value)}"
+                    )
                 column_name = key
                 column_value = value
             else:
@@ -88,7 +90,9 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
             if not isinstance(value_key, str):
                 raise ValueError(f"Expected inner key to be str, got {type(value_key)}")
             if not isinstance(value_value, str):
-                raise ValueError(f"Expected inner value to be str, got {type(value_value)}")
+                raise ValueError(
+                    f"Expected inner value to be str, got {type(value_value)}"
+                )
             row_index = int(value_key)
             row_json = json.loads(value_value)
 
