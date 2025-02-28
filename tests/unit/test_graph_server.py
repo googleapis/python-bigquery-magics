@@ -296,6 +296,22 @@ def test_convert_empty_dict():
     }
 
 
+@pytest.mark.skipif(
+    graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+)
+def test_convert_wrong_row_index():
+    result = convert_graph_data(
+        {
+            "result": {
+                # Missing "0" key
+                "1": json.dumps(row_alex_owns_account),
+            }
+        }
+    )
+
+    assert result == {"error": "Unexpected row index; expected 0, got 1"}
+
+
 class TestGraphServer(unittest.TestCase):
     def setUp(self):
         self.server_thread = GraphServer.init()
@@ -313,3 +329,7 @@ class TestGraphServer(unittest.TestCase):
         request = {"data": "ping"}
         response = GraphServer.post_ping(request)
         self.assertEqual(response, {"your_request": request})
+
+
+def test_stop_server_never_started():
+    GraphServer.stop_server()
