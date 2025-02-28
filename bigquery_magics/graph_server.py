@@ -64,18 +64,19 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
         for key, value in query_results.items():
             if column_name is None:
                 if not isinstance(key, str):
-                    raise ValueError(f"Expected key to be str, got {type(key)}")
+                    raise ValueError(f"Expected outer key to be str, got {type(key)}")
                 if not isinstance(value, dict):
-                    raise ValueError(f"Expected value to be dict, got {type(value)}")
+                    raise ValueError(f"Expected outer value to be dict, got {type(value)}")
                 column_name = key
                 column_value = value
             else:
+                # TODO: Implement multi-column support.
                 raise ValueError(
                     "Query has multiple columns - graph visualization not supported"
                 )
         if column_name is None or column_value is None:
             raise ValueError(
-                "Unable to get column name or value - how is this possible???"
+                "query result with no columns is not supported for graph visualization"
             )
 
         fields: List[StructType.Field] = [
@@ -85,9 +86,9 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
         rows = []
         for value_key, value_value in column_value.items():
             if not isinstance(value_key, str):
-                raise ValueError(f"Expected key to be str, got {type(key)}")
+                raise ValueError(f"Expected inner key to be str, got {type(value_key)}")
             if not isinstance(value_value, str):
-                raise ValueError(f"Expected value to be str, got {type(value)}")
+                raise ValueError(f"Expected inner value to be str, got {type(value_value)}")
             row_index = int(value_key)
             row_json = json.loads(value_value)
 
