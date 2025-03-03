@@ -780,7 +780,7 @@ def test_bigquery_graph_json_result(monkeypatch):
 def test_bigquery_graph_colab(monkeypatch):
     # Mock the colab module so the code under test uses colab.register_callback(), rather than
     # GraphServer.
-    sys.modules['google.colab'] = mock.Mock()
+    sys.modules["google.colab"] = mock.Mock()
 
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
@@ -855,7 +855,7 @@ def test_bigquery_graph_colab(monkeypatch):
         )  # identifier in 3rd row of query result
 
         # Make sure we actually used colab path, not GraphServer path.
-        assert sys.modules['google.colab'].output.register_callback.called
+        assert sys.modules["google.colab"].output.register_callback.called
         assert not graph_server_init_mock.called
 
     assert bqstorage_mock.called  # BQ storage client was used
@@ -870,7 +870,9 @@ def test_bigquery_graph_colab(monkeypatch):
     reason="Requires `spanner-graph-notebook` and `google-cloud-bigquery-storage`",
 )
 def test_colab_callback():
-    result = bigquery_magics.bigquery._colab_callback('query', json.dumps({"result": {}}))
+    result = bigquery_magics.bigquery._colab_callback(
+        "query", json.dumps({"result": {}})
+    )
     assert result.data == {
         "response": {
             "edges": [],
