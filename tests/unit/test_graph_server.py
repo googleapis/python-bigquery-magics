@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import json
-import requests
 import unittest
 
 import pytest
+import requests
 
 try:
     import spanner_graphs.graph_visualization as graph_visualization
