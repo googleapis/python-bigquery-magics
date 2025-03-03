@@ -21,7 +21,6 @@ from typing import Dict, List
 
 from networkx.classes import DiGraph
 import portpicker
-import requests
 
 
 def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
@@ -209,8 +208,6 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == GraphServer.endpoints["get_ping"]:
             self.handle_get_ping()
-        else:
-            super().do_GET()
 
     def do_POST(self):
         if self.path == GraphServer.endpoints["post_ping"]:

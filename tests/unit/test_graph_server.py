@@ -336,6 +336,9 @@ class TestGraphServer(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"your_request": {"data": "ping"}})
 
+    @pytest.mark.skipif(
+        graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+    )
     def test_post_query(self):
         self.assertTrue(self.server_thread.is_alive())
         route = GraphServer.build_route(GraphServer.endpoints["post_query"])
