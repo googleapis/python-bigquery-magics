@@ -343,7 +343,7 @@ class TestGraphServer(unittest.TestCase):
         data = {
             "result": {
                 "0": json.dumps(row_alex_owns_account),
-             }
+            }
         }
         response = requests.post(route, json={"params": json.dumps(data)})
         self.assertEqual(response.status_code, 200)
@@ -354,7 +354,9 @@ class TestGraphServer(unittest.TestCase):
 
         _validate_nodes_and_edges(response.json())
 
-        self.assertEqual(response_data["query_result"], {"result": [row_alex_owns_account]})
+        self.assertEqual(
+            response_data["query_result"], {"result": [row_alex_owns_account]}
+        )
         self.assertEqual(response_data["rows"], [[row_alex_owns_account]])
         self.assertIsNone(response_data["schema"])
 
