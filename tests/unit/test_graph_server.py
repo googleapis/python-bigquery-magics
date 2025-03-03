@@ -336,6 +336,28 @@ class TestGraphServer(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"your_request": {"data": "ping"}})
 
+    def test_post_query(self):
+        self.assertTrue(self.server_thread.is_alive())
+        route = GraphServer.build_route(GraphServer.endpoints["post_query"])
+
+        data = {
+            "result": {
+                "0": json.dumps(row_alex_owns_account),
+             }
+        }
+        response = requests.post(route, json={"params": json.dumps(data)})
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()["response"]
+
+        self.assertEqual(len(response_data["nodes"]), 2)
+        self.assertEqual(len(response_data["edges"]), 1)
+
+        _validate_nodes_and_edges(response.json())
+
+        self.assertEqual(response_data["query_result"], {"result": [row_alex_owns_account]})
+        self.assertEqual(response_data["rows"], [[row_alex_owns_account]])
+        self.assertIsNone(response_data["schema"])
+
 
 def test_stop_server_never_started():
     GraphServer.stop_server()
