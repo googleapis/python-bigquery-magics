@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import requests
 import unittest
 
 import pytest
@@ -320,15 +321,20 @@ class TestGraphServer(unittest.TestCase):
         GraphServer.stop_server()  # Stop the server after each test
         self.server_thread.join()  # Wait for the thread to finish
 
-    def test_ping(self):
+    def test_get_ping(self):
         self.assertTrue(self.server_thread.is_alive())
 
-        response = GraphServer.get_ping()
-        self.assertEqual(response, {"message": "pong"})
+        route = GraphServer.build_route(GraphServer.endpoints["get_ping"])
+        response = requests.get(route)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"message": "pong"})
 
-        request = {"data": "ping"}
-        response = GraphServer.post_ping(request)
-        self.assertEqual(response, {"your_request": request})
+    def test_post_ping(self):
+        self.assertTrue(self.server_thread.is_alive())
+        route = GraphServer.build_route(GraphServer.endpoints["post_ping"])
+        response = requests.post(route, json={"data": "ping"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"your_request": {"data": "ping"}})
 
 
 def test_stop_server_never_started():

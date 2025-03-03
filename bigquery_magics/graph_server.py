@@ -168,27 +168,7 @@ class GraphServer:
         if GraphServer._server:
             GraphServer._server.shutdown()
             print("BigQuery-magics graph server shutting down...")
-
-    @staticmethod
-    def get_ping():
-        route = GraphServer.build_route(GraphServer.endpoints["get_ping"])
-        response = requests.get(route)
-
-        assert (
-            response.status_code == 200
-        )  # Guaranteed by GraphServerHandler implementation
-        return response.json()
-
-    @staticmethod
-    def post_ping(data):
-        route = GraphServer.build_route(GraphServer.endpoints["post_ping"])
-        response = requests.post(route, json=data)
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Request failed with status code {response.status_code}")
-            return False
+            GraphServer._server = None
 
 
 class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
