@@ -927,11 +927,8 @@ def test_bigquery_graph_missing_spanner_deps(monkeypatch):
     ), graph_server_init_patch as graph_server_init_mock, display_patch as display_mock:
         run_query_mock.return_value = query_job_mock
         graph_server_init_mock.return_value = None
-        try:
+        with pytest.raises(ImportError):
             ip.run_cell_magic("bigquery", "--graph", sql)
-            assert False, "Should have failed"
-        except ImportError:
-            pass
         display_mock.assert_not_called()
 
 
