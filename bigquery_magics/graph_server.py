@@ -206,13 +206,14 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
         self.do_data_response(response)
 
     def do_GET(self):
-        if self.path == GraphServer.endpoints["get_ping"]:
-            self.handle_get_ping()
+        assert self.path == GraphServer.endpoints["get_ping"]
+        self.handle_get_ping()
 
     def do_POST(self):
         if self.path == GraphServer.endpoints["post_ping"]:
             self.handle_post_ping()
-        elif self.path == GraphServer.endpoints["post_query"]:
+        else:
+            assert self.path == GraphServer.endpoints["post_query"]
             self.handle_post_query()
 
 

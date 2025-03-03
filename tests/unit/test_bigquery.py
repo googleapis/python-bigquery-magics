@@ -771,6 +771,56 @@ def test_bigquery_graph_json_result(monkeypatch):
 
 
 @pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.skipif(
+    graph_visualization is not None or bigquery_storage is None,
+    reason="Requires `spanner-graph-notebook` to be missing and `google-cloud-bigquery-storage` to be present",
+)
+def test_bigquery_graph_missing_spanner_deps(monkeypatch):
+    ip = IPython.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    mock_credentials = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+
+    # Set up the context with monkeypatch so that it's reset for subsequent
+    # tests.
+    monkeypatch.setattr(bigquery_magics.context, "_credentials", mock_credentials)
+
+    # Mock out the BigQuery Storage API.
+    bqstorage_mock = mock.create_autospec(bigquery_storage.BigQueryReadClient)
+    bqstorage_instance_mock = mock.create_autospec(
+        bigquery_storage.BigQueryReadClient, instance=True
+    )
+    bqstorage_instance_mock._transport = mock.Mock()
+    bqstorage_mock.return_value = bqstorage_instance_mock
+    bqstorage_client_patch = mock.patch(
+        "google.cloud.bigquery_storage.BigQueryReadClient", bqstorage_mock
+    )
+    sql = "SELECT graph_json FROM t"
+    result = pandas.DataFrame([], columns=["graph_json"])
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    graph_server_init_patch = mock.patch(
+        "bigquery_magics.graph_server.GraphServer.init", autospec=True
+    )
+    display_patch = mock.patch("IPython.display.display", autospec=True)
+    query_job_mock = mock.create_autospec(
+        google.cloud.bigquery.job.QueryJob, instance=True
+    )
+    query_job_mock.to_dataframe.return_value = result
+
+    with run_query_patch as run_query_mock, (
+        bqstorage_client_patch
+    ), graph_server_init_patch as graph_server_init_mock, display_patch as display_mock:
+        run_query_mock.return_value = query_job_mock
+        graph_server_init_mock.return_value = None
+        try:
+            ip.run_cell_magic("bigquery", "--graph", sql)
+            assert False, "Should have failed"
+        except ImportError:
+            pass
+
+
+@pytest.mark.usefixtures("ipython_interactive")
 def test_bigquery_magic_default_connection_user_agent():
     ip = IPython.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
