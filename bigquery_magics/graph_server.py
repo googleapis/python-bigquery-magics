@@ -15,11 +15,11 @@
 import atexit
 import http.server
 import json
-import networkx
 import socketserver
 import threading
 from typing import Dict, List
 
+import networkx
 import portpicker
 
 
@@ -104,7 +104,9 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
 
         d, ignored_columns = columns_to_native_numpy(data, fields)
 
-        graph: networkx.classes.DiGraph = prepare_data_for_graphing(incoming=d, schema_json=None)
+        graph: networkx.classes.DiGraph = prepare_data_for_graphing(
+            incoming=d, schema_json=None
+        )
 
         nodes = []
         for node_id, node in graph.nodes(data=True):
@@ -137,10 +139,11 @@ class GraphServer:
     This server is used only in Jupyter; in colab, google.colab.output.register_callback()
     is used instead.
     """
+
     port = portpicker.pick_unused_port()
     host = "http://localhost"
     url = f"{host}:{port}"
-    
+
     endpoints = {
         "get_ping": "/get_ping",
         "post_ping": "/post_ping",
@@ -148,7 +151,7 @@ class GraphServer:
     }
 
     _server = None
-    
+
     @staticmethod
     def build_route(endpoint):
         """
@@ -175,7 +178,7 @@ class GraphServer:
     @staticmethod
     def init():
         """
-        Starts the HTTP server. The server runs forever, until stop_server() is called.        
+        Starts the HTTP server. The server runs forever, until stop_server() is called.
         """
         server_thread = threading.Thread(target=GraphServer._start_server)
         server_thread.start()
@@ -196,6 +199,7 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     """
     Handles HTTP requests send to the graph server.
     """
+
     def log_message(self, format, *args):
         pass
 
