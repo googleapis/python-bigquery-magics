@@ -741,12 +741,36 @@ def test_bigquery_graph_json_result(monkeypatch):
     with run_query_patch as run_query_mock, (
         bqstorage_client_patch
     ), graph_server_init_patch as graph_server_init_mock, display_patch as display_mock:
+        graph_server_init_mock.return_value = mock.Mock()
+        graph_server_init_mock.return_value.is_alive = mock.Mock()
+        graph_server_init_mock.return_value.is_alive.return_value = True
         run_query_mock.return_value = query_job_mock
-        graph_server_init_mock.return_value = None
+
         return_value = ip.run_cell_magic("bigquery", "--graph", sql)
 
         assert len(display_mock.call_args_list) == 1
         assert len(display_mock.call_args_list[0]) == 2
+
+        # Sanity check that the HTML content looks like graph visualization. Minimal check
+        # to allow Spanner to change its implementation without breaking this test.
+        html_content = display_mock.call_args_list[0][0][0].data
+        assert "<script>" in html_content
+        assert "</script>" in html_content
+        # Verify that the query results are embedded into the HTML, allowing them to be visualized.
+        # Due to escaping, it is not possible check for graph_json_rows exactly, so we check for a few
+        # sentinel strings within the query results, instead.
+        assert (
+            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" in html_content
+        )  # identifier in 1st row of query result
+        assert (
+            "mUZpbkdyYXBoLlBlcnNvbgB4kQY=" in html_content
+        )  # identifier in 2nd row of query result
+        assert (
+            "mUZpbkdyYXBoLlBlcnNvbgB4kQQ=" in html_content
+        )  # identifier in 3rd row of query result
+
+        # Make sure we can run a second graph query, after the graph server is already running.
+        return_value = ip.run_cell_magic("bigquery", "--graph", sql)
 
         # Sanity check that the HTML content looks like graph visualization. Minimal check
         # to allow Spanner to change its implementation without breaking this test.
