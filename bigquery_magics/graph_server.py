@@ -15,11 +15,11 @@
 import atexit
 import http.server
 import json
+import networkx
 import socketserver
 import threading
 from typing import Dict, List
 
-from networkx.classes import DiGraph
 import portpicker
 
 
@@ -104,7 +104,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
 
         d, ignored_columns = columns_to_native_numpy(data, fields)
 
-        graph: DiGraph = prepare_data_for_graphing(incoming=d, schema_json=None)
+        graph: networkx.classes.DiGraph = prepare_data_for_graphing(incoming=d, schema_json=None)
 
         nodes = []
         for node_id, node in graph.nodes(data=True):
@@ -128,10 +128,19 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
 
 
 class GraphServer:
+    """
+    Http server invoked by Javascript to obtain the query results for visualization.
+
+    The server is invoked by Javascript, generated as part of
+    spanner_graphs.graph_visualization.generate_visualization_html().
+
+    This server is used only in Jupyter; in colab, google.colab.output.register_callback()
+    is used instead.
+    """
     port = portpicker.pick_unused_port()
     host = "http://localhost"
     url = f"{host}:{port}"
-
+    
     endpoints = {
         "get_ping": "/get_ping",
         "post_ping": "/post_ping",
@@ -139,13 +148,20 @@ class GraphServer:
     }
 
     _server = None
-
+    
     @staticmethod
     def build_route(endpoint):
+        """
+        Returns a url for connecting to the given endpoint.
+        Supported values include:
+          - "get_ping": sends a GET request to ping the server.
+          - "post_ping": sends a POST request to ping the server.
+          - "post_query": sends a POST request to obtain query results.
+        """
         return f"{GraphServer.url}{endpoint}"
 
     @staticmethod
-    def start_server():
+    def _start_server():
         class ThreadedTCPServer(socketserver.TCPServer):
             # Allow socket reuse to avoid "Address already in use" errors
             allow_reuse_address = True
@@ -158,12 +174,18 @@ class GraphServer:
 
     @staticmethod
     def init():
-        server_thread = threading.Thread(target=GraphServer.start_server)
+        """
+        Starts the HTTP server. The server runs forever, until stop_server() is called.        
+        """
+        server_thread = threading.Thread(target=GraphServer._start_server)
         server_thread.start()
         return server_thread
 
     @staticmethod
     def stop_server():
+        """
+        Starts the HTTP server, if it is currently running.
+        """
         if GraphServer._server:
             GraphServer._server.shutdown()
             print("BigQuery-magics graph server shutting down...")
@@ -171,6 +193,9 @@ class GraphServer:
 
 
 class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
+    """
+    Handles HTTP requests send to the graph server.
+    """
     def log_message(self, format, *args):
         pass
 
