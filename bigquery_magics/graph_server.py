@@ -137,6 +137,7 @@ class GraphServer:
     This server is used only in Jupyter; in colab, google.colab.output.register_callback()
     is used instead.
     """
+
     port = None
     host = "http://localhost"
     url = f"{host}:{port}"
@@ -163,6 +164,7 @@ class GraphServer:
     @staticmethod
     def _start_server():
         import portpicker
+
         port = portpicker.pick_unused_port()
 
         class ThreadedTCPServer(socketserver.TCPServer):
