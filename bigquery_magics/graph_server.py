@@ -19,9 +19,6 @@ import socketserver
 import threading
 from typing import Dict, List
 
-import networkx
-import portpicker
-
 
 def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     """
@@ -52,6 +49,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     # does not even get called unless spanner_graphs has already been confirmed
     # to exist upstream.
     from google.cloud.spanner_v1.types import StructType, Type, TypeCode
+    import networkx
     from spanner_graphs.conversion import (
         columns_to_native_numpy,
         prepare_data_for_graphing,
@@ -139,8 +137,7 @@ class GraphServer:
     This server is used only in Jupyter; in colab, google.colab.output.register_callback()
     is used instead.
     """
-
-    port = portpicker.pick_unused_port()
+    port = None
     host = "http://localhost"
     url = f"{host}:{port}"
 
@@ -165,6 +162,9 @@ class GraphServer:
 
     @staticmethod
     def _start_server():
+        import portpicker
+        port = portpicker.pick_unused_port()
+
         class ThreadedTCPServer(socketserver.TCPServer):
             # Allow socket reuse to avoid "Address already in use" errors
             allow_reuse_address = True

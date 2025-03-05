@@ -315,12 +315,17 @@ def test_convert_wrong_row_index():
 
 class TestGraphServer(unittest.TestCase):
     def setUp(self):
-        self.server_thread = GraphServer.init()
+        if graph_visualization is not None:
+            self.server_thread = GraphServer.init()
 
     def tearDown(self):
-        GraphServer.stop_server()  # Stop the server after each test
-        self.server_thread.join()  # Wait for the thread to finish
+        if graph_visualization is not None:
+            GraphServer.stop_server()  # Stop the server after each test
+            self.server_thread.join()  # Wait for the thread to finish
 
+    @pytest.mark.skipif(
+        graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+    )
     def test_get_ping(self):
         self.assertTrue(self.server_thread.is_alive())
 
@@ -329,6 +334,9 @@ class TestGraphServer(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"message": "pong"})
 
+    @pytest.mark.skipif(
+        graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+    )
     def test_post_ping(self):
         self.assertTrue(self.server_thread.is_alive())
         route = GraphServer.build_route(GraphServer.endpoints["post_ping"])
