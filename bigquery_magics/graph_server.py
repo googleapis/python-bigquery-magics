@@ -165,7 +165,7 @@ class GraphServer:
     def _start_server():
         import portpicker
 
-        port = portpicker.pick_unused_port()
+        GraphServer.port = portpicker.pick_unused_port()
 
         class ThreadedTCPServer(socketserver.TCPServer):
             # Allow socket reuse to avoid "Address already in use" errors
