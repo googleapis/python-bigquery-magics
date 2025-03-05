@@ -23,7 +23,7 @@ try:
 except ImportError:
     graph_visualization = None
 
-from bigquery_magics.graph_server import GraphServer, convert_graph_data
+import bigquery_magics.graph_server as graph_server
 
 alex_properties = {
     "birthday": "1991-12-21T08:00:00Z",
@@ -134,7 +134,7 @@ def _validate_nodes_and_edges(result):
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_no_rows():
-    result = convert_graph_data({"result": {}})
+    result = graph_server.convert_graph_data({"result": {}})
     assert result == {
         "response": {
             "edges": [],
@@ -150,7 +150,7 @@ def test_convert_one_column_no_rows():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_one_row_one_column():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 "0": json.dumps(row_alex_owns_account),
@@ -172,7 +172,7 @@ def test_convert_one_column_one_row_one_column():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_two_rows():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 "0": json.dumps(row_alex_owns_account),
@@ -202,7 +202,7 @@ def test_convert_one_column_two_rows():
 def test_convert_nongraph_json():
     # If we have valid json that doesn't represent a graph, we don't expect to get nodes and edges,
     # but we should at least have row data, allowing the tabular view to work.
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 "0": json.dumps({"foo": 1, "bar": 2}),
@@ -222,7 +222,7 @@ def test_convert_nongraph_json():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_outer_key_not_string():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             0: {
                 "0": json.dumps({"foo": 1, "bar": 2}),
@@ -236,7 +236,7 @@ def test_convert_outer_key_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_outer_value_not_dict():
-    result = convert_graph_data({"result": 0})
+    result = graph_server.convert_graph_data({"result": 0})
     assert result == {"error": "Expected outer value to be dict, got <class 'int'>"}
 
 
@@ -244,7 +244,7 @@ def test_convert_outer_value_not_dict():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_inner_key_not_string():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 0: json.dumps({"foo": 1, "bar": 2}),
@@ -258,7 +258,7 @@ def test_convert_inner_key_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_inner_value_not_string():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 "0": 1,
@@ -272,7 +272,7 @@ def test_convert_inner_value_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_one_row_two_columns():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result1": {
                 "0": json.dumps(row_alex_owns_account),
@@ -291,7 +291,7 @@ def test_convert_one_column_one_row_two_columns():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_empty_dict():
-    result = convert_graph_data({})
+    result = graph_server.convert_graph_data({})
     assert result == {
         "error": "query result with no columns is not supported for graph visualization"
     }
@@ -301,7 +301,7 @@ def test_convert_empty_dict():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_wrong_row_index():
-    result = convert_graph_data(
+    result = graph_server.convert_graph_data(
         {
             "result": {
                 # Missing "0" key
@@ -315,13 +315,11 @@ def test_convert_wrong_row_index():
 
 class TestGraphServer(unittest.TestCase):
     def setUp(self):
-        if graph_visualization is not None:
-            self.server_thread = GraphServer.init()
+        self.server_thread = graph_server.graph_server.init()
 
     def tearDown(self):
-        if graph_visualization is not None:
-            GraphServer.stop_server()  # Stop the server after each test
-            self.server_thread.join()  # Wait for the thread to finish
+        graph_server.graph_server.stop_server()  # Stop the server after each test
+        self.server_thread.join()  # Wait for the thread to finish
 
     @pytest.mark.skipif(
         graph_visualization is None, reason="Requires `spanner-graph-notebook`"
@@ -329,7 +327,7 @@ class TestGraphServer(unittest.TestCase):
     def test_get_ping(self):
         self.assertTrue(self.server_thread.is_alive())
 
-        route = GraphServer.build_route(GraphServer.endpoints["get_ping"])
+        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["get_ping"])
         response = requests.get(route)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"message": "pong"})
@@ -339,7 +337,7 @@ class TestGraphServer(unittest.TestCase):
     )
     def test_post_ping(self):
         self.assertTrue(self.server_thread.is_alive())
-        route = GraphServer.build_route(GraphServer.endpoints["post_ping"])
+        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["post_ping"])
         response = requests.post(route, json={"data": "ping"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"your_request": {"data": "ping"}})
@@ -349,7 +347,7 @@ class TestGraphServer(unittest.TestCase):
     )
     def test_post_query(self):
         self.assertTrue(self.server_thread.is_alive())
-        route = GraphServer.build_route(GraphServer.endpoints["post_query"])
+        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["post_query"])
 
         data = {
             "result": {
@@ -373,4 +371,4 @@ class TestGraphServer(unittest.TestCase):
 
 
 def test_stop_server_never_started():
-    GraphServer.stop_server()
+    graph_server.graph_server.stop_server()

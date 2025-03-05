@@ -138,20 +138,19 @@ class GraphServer:
     is used instead.
     """
 
-    port = None
     host = "http://localhost"
-    url = f"{host}:{port}"
-
     endpoints = {
         "get_ping": "/get_ping",
         "post_ping": "/post_ping",
         "post_query": "/post_query",
     }
 
-    _server = None
+    def __init__(self):
+        self.port = None
+        self.url = None
+        self._server = None
 
-    @staticmethod
-    def build_route(endpoint):
+    def build_route(self, endpoint):
         """
         Returns a url for connecting to the given endpoint.
         Supported values include:
@@ -159,43 +158,43 @@ class GraphServer:
           - "post_ping": sends a POST request to ping the server.
           - "post_query": sends a POST request to obtain query results.
         """
-        return f"{GraphServer.url}{endpoint}"
+        return f"{self.url}{endpoint}"
 
-    @staticmethod
-    def _start_server():
-        import portpicker
-
-        GraphServer.port = portpicker.pick_unused_port()
-
+    def _start_server(self):
         class ThreadedTCPServer(socketserver.TCPServer):
             # Allow socket reuse to avoid "Address already in use" errors
             allow_reuse_address = True
             # Daemon threads automatically terminate when the main program exits
             daemon_threads = True
 
-        with ThreadedTCPServer(("", GraphServer.port), GraphServerHandler) as httpd:
-            GraphServer._server = httpd
-            GraphServer._server.serve_forever()
+        with ThreadedTCPServer(("", self.port), GraphServerHandler) as httpd:
+            self._server = httpd
+            self._server.serve_forever()
 
-    @staticmethod
-    def init():
+    def init(self):
         """
         Starts the HTTP server. The server runs forever, until stop_server() is called.
         """
-        server_thread = threading.Thread(target=GraphServer._start_server)
+        import portpicker
+        self.port = portpicker.pick_unused_port()
+        self.url = f"{GraphServer.host}:{self.port}"
+
+        server_thread = threading.Thread(target=self._start_server)
         server_thread.start()
         return server_thread
 
-    @staticmethod
-    def stop_server():
+    def stop_server(self):
         """
         Starts the HTTP server, if it is currently running.
         """
-        if GraphServer._server:
-            GraphServer._server.shutdown()
+        if self._server:
+            self._server.shutdown()
             print("BigQuery-magics graph server shutting down...")
-            GraphServer._server = None
+            self._server = None
 
+
+global graph_server
+graph_server = GraphServer()
 
 class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     """
@@ -248,4 +247,4 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_post_query()
 
 
-atexit.register(GraphServer.stop_server)
+atexit.register(graph_server.stop_server)

@@ -746,7 +746,9 @@ def test_bigquery_graph_json_result(monkeypatch):
         graph_server_init_mock.return_value.is_alive.return_value = True
         run_query_mock.return_value = query_job_mock
 
+        print('Got here #500')
         return_value = ip.run_cell_magic("bigquery", "--graph", sql)
+        print('Got here #501')
 
         assert len(display_mock.call_args_list) == 1
         assert len(display_mock.call_args_list[0]) == 2
@@ -1038,7 +1040,7 @@ def test_bigquery_magic_does_not_clear_display_in_verbose_mode():
     )
 
     clear_patch = mock.patch(
-        "bigquery_magics.bigquery.display.clear_output",
+        "bigquery_magics.bigquery.IPython.display.clear_output",
         autospec=True,
     )
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
@@ -1057,7 +1059,7 @@ def test_bigquery_magic_clears_display_in_non_verbose_mode():
     )
 
     clear_patch = mock.patch(
-        "bigquery_magics.bigquery.display.clear_output",
+        "bigquery_magics.bigquery.IPython.display.clear_output",
         autospec=True,
     )
     run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)

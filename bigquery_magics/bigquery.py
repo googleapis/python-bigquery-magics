@@ -101,15 +101,13 @@ import copy
 import json
 import re
 import sys
-from threading import Thread
+import threading
 import time
 from typing import Any, List, Tuple
 import warnings
 
 import IPython  # type: ignore
-from IPython import display  # type: ignore
 from IPython.core import magic_arguments  # type: ignore
-from IPython.core.display import HTML, JSON
 from IPython.core.getipython import get_ipython
 from google.api_core import client_info
 from google.api_core.exceptions import NotFound
@@ -123,7 +121,7 @@ import pandas
 from bigquery_magics import line_arg_parser as lap
 import bigquery_magics._versions_helpers
 import bigquery_magics.config
-from bigquery_magics.graph_server import GraphServer, convert_graph_data
+import bigquery_magics.graph_server as graph_server
 import bigquery_magics.line_arg_parser.exceptions
 import bigquery_magics.version
 
@@ -609,10 +607,10 @@ def _is_colab() -> bool:
 
 
 def _colab_callback(query: str, params: str):
-    return JSON(convert_graph_data(query_results=json.loads(params)))
+    return IPython.core.display.JSON(graph_server.convert_graph_data(query_results=json.loads(params)))
 
 
-singleton_server_thread: Thread = None
+singleton_server_thread: threading.Thread = None
 
 
 def _add_graph_widget(query_result):
@@ -636,15 +634,15 @@ def _add_graph_widget(query_result):
         global singleton_server_thread
         alive = singleton_server_thread and singleton_server_thread.is_alive()
         if not alive:
-            singleton_server_thread = GraphServer.init()
+            singleton_server_thread = graph_server.graph_server.init()
 
     # Create html to invoke the graph server
     html_content = generate_visualization_html(
         query="dummy query",
-        port=GraphServer.port,
+        port=graph_server.graph_server.port,
         params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
     )
-    display.display(HTML(html_content))
+    IPython.display.display(IPython.core.display.HTML(html_content))
 
 
 def _is_valid_json(s: str):
@@ -710,7 +708,7 @@ def _make_bq_query(
         return
 
     if not args.verbose:
-        display.clear_output()
+        IPython.display.clear_output()
 
     if args.dry_run:
         # TODO(tswast): Use _handle_result() here, too, but perhaps change the
