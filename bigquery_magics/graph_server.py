@@ -176,6 +176,7 @@ class GraphServer:
         Starts the HTTP server. The server runs forever, until stop_server() is called.
         """
         import portpicker
+
         self.port = portpicker.pick_unused_port()
         self.url = f"{GraphServer.host}:{self.port}"
 
@@ -195,6 +196,7 @@ class GraphServer:
 
 global graph_server
 graph_server = GraphServer()
+
 
 class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     """

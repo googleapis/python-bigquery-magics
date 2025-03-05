@@ -746,9 +746,7 @@ def test_bigquery_graph_json_result(monkeypatch):
         graph_server_init_mock.return_value.is_alive.return_value = True
         run_query_mock.return_value = query_job_mock
 
-        print('Got here #500')
         return_value = ip.run_cell_magic("bigquery", "--graph", sql)
-        print('Got here #501')
 
         assert len(display_mock.call_args_list) == 1
         assert len(display_mock.call_args_list[0]) == 2

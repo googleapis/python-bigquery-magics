@@ -607,7 +607,9 @@ def _is_colab() -> bool:
 
 
 def _colab_callback(query: str, params: str):
-    return IPython.core.display.JSON(graph_server.convert_graph_data(query_results=json.loads(params)))
+    return IPython.core.display.JSON(
+        graph_server.convert_graph_data(query_results=json.loads(params))
+    )
 
 
 singleton_server_thread: threading.Thread = None

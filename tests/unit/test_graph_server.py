@@ -327,7 +327,9 @@ class TestGraphServer(unittest.TestCase):
     def test_get_ping(self):
         self.assertTrue(self.server_thread.is_alive())
 
-        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["get_ping"])
+        route = graph_server.graph_server.build_route(
+            graph_server.GraphServer.endpoints["get_ping"]
+        )
         response = requests.get(route)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"message": "pong"})
@@ -337,7 +339,9 @@ class TestGraphServer(unittest.TestCase):
     )
     def test_post_ping(self):
         self.assertTrue(self.server_thread.is_alive())
-        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["post_ping"])
+        route = graph_server.graph_server.build_route(
+            graph_server.GraphServer.endpoints["post_ping"]
+        )
         response = requests.post(route, json={"data": "ping"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"your_request": {"data": "ping"}})
@@ -347,7 +351,9 @@ class TestGraphServer(unittest.TestCase):
     )
     def test_post_query(self):
         self.assertTrue(self.server_thread.is_alive())
-        route = graph_server.graph_server.build_route(graph_server.GraphServer.endpoints["post_query"])
+        route = graph_server.graph_server.build_route(
+            graph_server.GraphServer.endpoints["post_query"]
+        )
 
         data = {
             "result": {
