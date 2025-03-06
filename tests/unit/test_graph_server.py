@@ -181,15 +181,17 @@ def test_convert_one_column_one_row_one_column_null_json():
     )
 
     assert result == {
-       'response': {
-           'edges': [],
-           'nodes': [],
-           'query_result': {
-               'result': []
-           },
-           'rows': [ [ None, ]],
-           'schema': None,
-       },
+        "response": {
+            "edges": [],
+            "nodes": [],
+            "query_result": {"result": []},
+            "rows": [
+                [
+                    None,
+                ]
+            ],
+            "schema": None,
+        },
     }
 
     _validate_nodes_and_edges(result)
