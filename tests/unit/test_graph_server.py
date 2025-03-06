@@ -171,6 +171,33 @@ def test_convert_one_column_one_row_one_column():
 @pytest.mark.skipif(
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
+def test_convert_one_column_one_row_one_column_null_json():
+    result = graph_server.convert_graph_data(
+        {
+            "result": {
+                "0": json.dumps(None),
+            }
+        }
+    )
+
+    assert result == {
+       'response': {
+           'edges': [],
+           'nodes': [],
+           'query_result': {
+               'result': []
+           },
+           'rows': [ [ None, ]],
+           'schema': None,
+       },
+    }
+
+    _validate_nodes_and_edges(result)
+
+
+@pytest.mark.skipif(
+    graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+)
 def test_convert_one_column_two_rows():
     result = graph_server.convert_graph_data(
         {
@@ -301,25 +328,35 @@ def test_convert_empty_dict():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_wrong_row_index():
-    result = graph_server.convert_graph_data(
+    result0 = graph_server.convert_graph_data(
         {
             "result": {
-                # Missing "0" key
+                "0": json.dumps(row_alex_owns_account),
+            }
+        }
+    )
+
+    # Changing the index should not impact the result.
+    result1 = graph_server.convert_graph_data(
+        {
+            "result": {
                 "1": json.dumps(row_alex_owns_account),
             }
         }
     )
 
-    assert result == {"error": "Unexpected row index; expected 0, got 1"}
+    assert result1 == result0
 
 
 class TestGraphServer(unittest.TestCase):
     def setUp(self):
-        self.server_thread = graph_server.graph_server.init()
+        if graph_visualization is not None:
+            self.server_thread = graph_server.graph_server.init()
 
     def tearDown(self):
-        graph_server.graph_server.stop_server()  # Stop the server after each test
-        self.server_thread.join()  # Wait for the thread to finish
+        if graph_visualization is not None:
+            graph_server.graph_server.stop_server()  # Stop the server after each test
+            self.server_thread.join()  # Wait for the thread to finish
 
     @pytest.mark.skipif(
         graph_visualization is None, reason="Requires `spanner-graph-notebook`"

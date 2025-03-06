@@ -90,14 +90,10 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 raise ValueError(
                     f"Expected inner value to be str, got {type(value_value)}"
                 )
-            row_index = int(value_key)
             row_json = json.loads(value_value)
 
-            if row_index != len(data[column_name]):
-                raise ValueError(
-                    f"Unexpected row index; expected {len(data[column_name])}, got {row_index}"
-                )
-            data[column_name].append(row_json)
+            if row_json is not None:
+                data[column_name].append(row_json)
             rows.append([row_json])
 
         d, ignored_columns = columns_to_native_numpy(data, fields)
