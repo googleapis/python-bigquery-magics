@@ -352,11 +352,11 @@ def test_convert_wrong_row_index():
 
 class TestGraphServer(unittest.TestCase):
     def setUp(self):
-        if graph_visualization is not None:
+        if graph_visualization is not None:  # pragma: NO COVER
             self.server_thread = graph_server.graph_server.init()
 
     def tearDown(self):
-        if graph_visualization is not None:
+        if graph_visualization is not None:  # pragma: NO COVER
             graph_server.graph_server.stop_server()  # Stop the server after each test
             self.server_thread.join()  # Wait for the thread to finish
 

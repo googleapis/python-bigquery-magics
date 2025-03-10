@@ -620,7 +620,7 @@ def _add_graph_widget(query_result):
         from spanner_graphs.graph_visualization import generate_visualization_html
     except ImportError as err:
         customized_error = ImportError(
-            "Use of --graph requires the spanner_graphs package to be installed."
+            "Use of --graph requires the spanner-graph-notebook package to be installed. Install it with `pip install 'bigquery-magics[spanner-graph-notebook]'`."
         )
         raise customized_error from err
 
@@ -640,7 +640,7 @@ def _add_graph_widget(query_result):
 
     # Create html to invoke the graph server
     html_content = generate_visualization_html(
-        query="dummy query",
+        query="placeholder query",
         port=graph_server.graph_server.port,
         params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
     )
