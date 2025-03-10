@@ -42,7 +42,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 visualization for columns of type JSON).
     """
     # Delay spanner imports until this function is called to avoid making
-    # # spanner_graphs (and its dependencies) hard requirements for bigquery
+    # spanner-graph-notebook (and its dependencies) hard requirements for bigquery
     # magics users, who don't need graph visualization.
     #
     # Note that these imports do not need to be in a try/except, as this function
