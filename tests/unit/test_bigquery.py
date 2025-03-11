@@ -738,7 +738,9 @@ def test_bigquery_graph_json_result(monkeypatch):
     )
     query_job_mock.to_dataframe.return_value = result
 
-    with run_query_patch as run_query_mock, bqstorage_client_patch, display_patch as display_mock:
+    with run_query_patch as run_query_mock, (
+        bqstorage_client_patch
+    ), display_patch as display_mock:
         run_query_mock.return_value = query_job_mock
 
         return_value = ip.run_cell_magic("bigquery", "--graph", sql)
@@ -845,7 +847,9 @@ def test_bigquery_graph_colab(monkeypatch):
     )
     query_job_mock.to_dataframe.return_value = result
 
-    with run_query_patch as run_query_mock, bqstorage_client_patch, display_patch as display_mock:
+    with run_query_patch as run_query_mock, (
+        bqstorage_client_patch
+    ), display_patch as display_mock:
         run_query_mock.return_value = query_job_mock
         try:
             return_value = ip.run_cell_magic("bigquery", "--graph", sql)
@@ -936,7 +940,9 @@ def test_bigquery_graph_missing_spanner_deps(monkeypatch):
     )
     query_job_mock.to_dataframe.return_value = result
 
-    with run_query_patch as run_query_mock, bqstorage_client_patch, display_patch as display_mock:
+    with run_query_patch as run_query_mock, (
+        bqstorage_client_patch
+    ), display_patch as display_mock:
         run_query_mock.return_value = query_job_mock
         with pytest.raises(ImportError):
             try:
