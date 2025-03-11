@@ -656,11 +656,13 @@ def _is_valid_json(s: str):
 
 
 def _supports_graph_widget(query_result: pandas.DataFrame):
-    num_rows, num_columns = query_result.shape
+    # Visualization is supported if we have any json items to display.
+    # (Non-json items are excluded from visualization, but we still want to bring up
+    #  the visualizer for the json items.)
     for column in query_result.columns:
-        if not query_result[column].apply(_is_valid_json).all():
-            return False
-    return True
+        if query_result[column].apply(_is_valid_json).any():
+            return True
+    return False
 
 
 def _make_bq_query(

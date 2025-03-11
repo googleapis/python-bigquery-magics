@@ -55,7 +55,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     try:
         fields: List[StructType.Field] = []
         data = {}
-        rows = []
+        tabular_data = {}
         for key, value in query_results.items():
             column_name = None
             column_value = None
@@ -70,20 +70,16 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 StructType.Field(name=column_name, type=Type(code=TypeCode.JSON))
             )
             data[column_name] = []
-            for value_key, value_value in column_value.items():
-                if not isinstance(value_key, str):
-                    raise ValueError(
-                        f"Expected inner key to be str, got {type(value_key)}"
-                    )
-                if not isinstance(value_value, str):
-                    raise ValueError(
-                        f"Expected inner value to be str, got {type(value_value)}"
-                    )
-                row_json = json.loads(value_value)
-
-                if row_json is not None:
+            tabular_data[column_name] = []
+            for value_key, value_value in column_value.items():                
+                try:
+                    row_json = json.loads(value_value)
                     data[column_name].append(row_json)
-                rows.append([row_json])
+                    tabular_data[column_name].append(row_json)
+                except:
+                    # Non-JSON columns cannot be visualized, but we still want them
+                    # in the tabular view.
+                    tabular_data[column_name].append(str(value_value))
 
         nodes, edges = get_nodes_edges(data, fields, schema_json=None)
 
@@ -96,7 +92,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 # BigQuery side.
                 "schema": None,
                 # This field is used to populate the visualizer's tabular view.
-                "query_result": data,
+                "query_result": tabular_data,
             }
         }
     except Exception as e:
