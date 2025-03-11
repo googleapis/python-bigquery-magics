@@ -102,10 +102,15 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
 
         return {
             "response": {
+                # These fields populate the graph result view.
                 "nodes": nodes,
                 "edges": edges,
+
+                # This populates the visualizer's schema view, but not yet implemented on the
+                # BigQuery side.
                 "schema": None,
-                "rows": rows,
+
+                # This field is used to populate the visualizer's tabular view.
                 "query_result": data,
             }
         }
