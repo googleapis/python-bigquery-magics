@@ -116,18 +116,17 @@ row_lee_owns_account = [
 
 def _validate_nodes_and_edges(result):
     for edge in result["response"]["edges"]:
-        assert "id" in edge
-        assert edge["label"] == "Owns"
-        assert "source" in edge
-        assert "target" in edge
+        assert "source_node_identifier" in edge
+        assert "destination_node_identifier" in edge
+        assert "identifier" in edge
+        assert "Owns" in edge["labels"]
         assert "properties" in edge
 
+    print(result["response"]["nodes"])
     for node in result["response"]["nodes"]:
-        assert "id" in node
-        assert "key_property_names" in node
-        assert node["label"] in ("Account", "Person")
+        assert "identifier" in node
+        assert "Account" in node["labels"] or "Person" in node["labels"]
         assert "properties" in node
-        assert "value" in node
 
 
 @pytest.mark.skipif(
@@ -228,7 +227,6 @@ def test_convert_one_row_two_columns():
             },
         }
     )
-    print(json.dumps(result))
 
     assert len(result["response"]["nodes"]) == 4
     assert len(result["response"]["edges"]) == 2
