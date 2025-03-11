@@ -65,17 +65,19 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
             if not isinstance(key, str):
                 raise ValueError(f"Expected outer key to be str, got {type(key)}")
             if not isinstance(value, dict):
-                raise ValueError(
-                    f"Expected outer value to be dict, got {type(value)}"
-                )
+                raise ValueError(f"Expected outer value to be dict, got {type(value)}")
             column_name = key
             column_value = value
 
-            fields.append(StructType.Field(name=column_name, type=Type(code=TypeCode.JSON)))        
+            fields.append(
+                StructType.Field(name=column_name, type=Type(code=TypeCode.JSON))
+            )
             data[column_name] = []
             for value_key, value_value in column_value.items():
                 if not isinstance(value_key, str):
-                    raise ValueError(f"Expected inner key to be str, got {type(value_key)}")
+                    raise ValueError(
+                        f"Expected inner key to be str, got {type(value_key)}"
+                    )
                 if not isinstance(value_value, str):
                     raise ValueError(
                         f"Expected inner value to be str, got {type(value_value)}"
@@ -105,11 +107,9 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 # These fields populate the graph result view.
                 "nodes": nodes,
                 "edges": edges,
-
                 # This populates the visualizer's schema view, but not yet implemented on the
                 # BigQuery side.
                 "schema": None,
-
                 # This field is used to populate the visualizer's tabular view.
                 "query_result": data,
             }
