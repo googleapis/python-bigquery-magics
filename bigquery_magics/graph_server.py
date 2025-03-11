@@ -50,10 +50,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     # to exist upstream.
     from google.cloud.spanner_v1.types import StructType, Type, TypeCode
     import networkx
-    from spanner_graphs.conversion import (
-        columns_to_native_numpy,
-        prepare_data_for_graphing,
-    )
+    from spanner_graphs.conversion import get_nodes_edges
 
     try:
         fields: List[StructType.Field] = []
@@ -88,25 +85,13 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                     data[column_name].append(row_json)
                 rows.append([row_json])
 
-        d, ignored_columns = columns_to_native_numpy(data, fields)
-
-        graph: networkx.classes.DiGraph = prepare_data_for_graphing(
-            incoming=d, schema_json=None
-        )
-
-        nodes = []
-        for node_id, node in graph.nodes(data=True):
-            nodes.append(node)
-
-        edges = []
-        for from_id, to_id, edge in graph.edges(data=True):
-            edges.append(edge)
+        nodes, edges = get_nodes_edges(data, fields, schema_json=None)
 
         return {
             "response": {
                 # These fields populate the graph result view.
-                "nodes": nodes,
-                "edges": edges,
+                "nodes": [node.to_json() for node in nodes],
+                "edges": [edge.to_json() for edge in edges],
                 # This populates the visualizer's schema view, but not yet implemented on the
                 # BigQuery side.
                 "schema": None,
