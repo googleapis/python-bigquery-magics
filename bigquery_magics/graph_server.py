@@ -220,20 +220,16 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
         - params: A JSON string containing connection parameters (project, instance, database, graph)
         - request: A dictionary with node details (uid, node_labels, node_properties, direction, edge_label)
         """
-        try:
-            data = self.parse_post_data()
+        data = self.parse_post_data()
 
-            # Execute node expansion with:
-            # - params_str: JSON string with connection parameters (project, instance, database, graph)
-            # - request: Dict with node details (uid, node_labels, node_properties, direction, edge_label)
-            self.do_data_response(
-                execute_node_expansion(
-                    params=data.get("params"), request=data.get("request")
-                )
+        # Execute node expansion with:
+        # - params_str: JSON string with connection parameters (project, instance, database, graph)
+        # - request: Dict with node details (uid, node_labels, node_properties, direction, edge_label)
+        self.do_data_response(
+            execute_node_expansion(
+                params=data.get("params"), request=data.get("request")
             )
-        except BaseException as e:
-            self.do_error_response(e)
-            return
+        )
 
     def do_GET(self):
         assert self.path == GraphServer.endpoints["get_ping"]

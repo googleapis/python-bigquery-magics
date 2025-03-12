@@ -441,5 +441,21 @@ class TestGraphServer(unittest.TestCase):
         )
 
 
+    @pytest.mark.skipif(
+        graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+    )
+    def test_post_node_expansion_invalid_request(self):
+        self.assertTrue(self.server_thread.is_alive())
+        route = graph_server.graph_server.build_route(
+            graph_server.GraphServer.endpoints["post_node_expansion"]
+        )
+        request = {}
+        response = requests.post(route, json={"params": json.dumps(request)})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(), {"error": "Node expansion not yet implemented"}
+        )
+
+
 def test_stop_server_never_started():
     graph_server.graph_server.stop_server()
