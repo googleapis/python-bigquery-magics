@@ -596,20 +596,32 @@ def _handle_result(result, args):
     return result
 
 
-def _is_colab() -> bool:
-    """Check if code is running in Google Colab"""
-    try:
-        import google.colab  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
-def _colab_callback(query: str, params: str):
+def _colab_query_callback(query: str, params: str):
     return IPython.core.display.JSON(
         graph_server.convert_graph_data(query_results=json.loads(params))
     )
+
+def _colab_node_expansion_callback(request: dict, params_str: str):
+    """Handle node expansion requests in Google Colab environment
+    
+    Args:
+        request: A dictionary containing node expansion details including:
+            - uid: str - Unique identifier of the node to expand
+            - node_labels: List[str] - Labels of the node
+            - node_properties: List[Dict] - Properties of the node with key, value, and type
+            - direction: str - Direction of expansion ("INCOMING" or "OUTGOING")
+            - edge_label: Optional[str] - Label of edges to filter by
+        params_str: A JSON string containing connection parameters
+    
+    Returns:
+        JSON: A JSON-serialized response containing either:
+            - The query results with nodes and edges
+            - An error message if the request failed
+    """
+    try:
+        return IPython.core.display.JSON(graph_server.execute_node_expansion(params_str, request))
+    except BaseException as e:
+        return IPython.core.display.JSON({"error": e})
 
 
 singleton_server_thread: threading.Thread = None
@@ -628,11 +640,12 @@ def _add_graph_widget(query_result):
     # visualizer widget. In colab, we are not able to create an http server on a
     # background thread, so we use a special colab-specific api to register a callback,
     # to be invoked from Javascript.
-    if _is_colab():
+    try:
         from google.colab import output
 
-        output.register_callback("graph_visualization.Query", _colab_callback)
-    else:
+        output.register_callback("graph_visualization.Query", _colab_query_callback)
+        output.register_callback("graph_visualization.NodeExpansion", _colab_node_expansion_callback)
+    except ImportError:
         global singleton_server_thread
         alive = singleton_server_thread and singleton_server_thread.is_alive()
         if not alive:

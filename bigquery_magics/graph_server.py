@@ -20,6 +20,10 @@ import threading
 from typing import Dict, List
 
 
+def execute_node_expansion(params, request):
+    return {"error": "Node expansion not yet implemented"}
+
+
 def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     """
     Converts graph data to the form expected by the visualization framework.
@@ -75,7 +79,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                     row_json = json.loads(value_value)
                     data[column_name].append(row_json)
                     tabular_data[column_name].append(row_json)
-                except:
+                except (ValueError, TypeError):
                     # Non-JSON columns cannot be visualized, but we still want them
                     # in the tabular view.
                     tabular_data[column_name].append(str(value_value))
@@ -113,6 +117,7 @@ class GraphServer:
     endpoints = {
         "get_ping": "/get_ping",
         "post_ping": "/post_ping",
+        "post_node_expansion": '/post_node_expansion',
         "post_query": "/post_query",
     }
 

@@ -891,8 +891,8 @@ def test_bigquery_graph_colab(monkeypatch):
     graph_visualization is None or bigquery_storage is None,
     reason="Requires `spanner-graph-notebook` and `google-cloud-bigquery-storage`",
 )
-def test_colab_callback():
-    result = bigquery_magics.bigquery._colab_callback(
+def test_colab_query_callback():
+    result = bigquery_magics.bigquery._colab_query_callback(
         "query", json.dumps({"result": {}})
     )
     assert result.data == {
@@ -903,6 +903,23 @@ def test_colab_callback():
             "schema": None,
         }
     }
+
+
+@pytest.mark.usefixtures("ipython_interactive")
+@pytest.mark.skipif(
+    graph_visualization is None or bigquery_storage is None,
+    reason="Requires `spanner-graph-notebook` and `google-cloud-bigquery-storage`",
+)
+def test_colab_node_expansion_callback():
+    result = bigquery_magics.bigquery._colab_node_expansion_callback(
+        request={"uid": "test_uid",
+                 "node_labels": ["label1, label2"],
+                 "node_properites": {},
+                 "direction": "INCOMING",
+                 "edge_label": None},
+        params_str="{}")
+
+    assert result.data == {"error": "Node expansion not yet implemented"}
 
 
 @pytest.mark.usefixtures("ipython_interactive")
