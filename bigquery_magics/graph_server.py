@@ -86,7 +86,10 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
 
         nodes, edges = get_nodes_edges(data, fields, schema_json=None)
         nodes_json = [node.to_json() for node in nodes]
-        edges_json = [edge.to_json() for edge in edges]
+        # edges_json = [edge.to_json() for edge in edges]
+        edges_json = []
+        for edge in edges:
+            edges_json.append(edge.to_json())
 
         return {
             "response": {
