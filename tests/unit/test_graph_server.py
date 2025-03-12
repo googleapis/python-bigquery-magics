@@ -184,7 +184,9 @@ def test_convert_one_column_two_rows_one_column_null_json():
 
     _validate_nodes_and_edges(result)
 
-    assert result["response"]["query_result"] == {"result": [None, row_alex_owns_account]}
+    assert result["response"]["query_result"] == {
+        "result": [None, row_alex_owns_account]
+    }
     assert result["response"]["schema"] is None
 
     _validate_nodes_and_edges(result)
@@ -295,7 +297,7 @@ def test_convert_inner_value_not_string():
             },
             "col2": {
                 "0": 12345,
-            }
+            },
         }
     )
 

@@ -71,7 +71,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
             )
             data[column_name] = []
             tabular_data[column_name] = []
-            for value_key, value_value in column_value.items():                
+            for value_key, value_value in column_value.items():
                 try:
                     row_json = json.loads(value_value)
                     data[column_name].append(row_json)
