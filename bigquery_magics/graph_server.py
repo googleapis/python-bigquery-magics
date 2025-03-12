@@ -49,7 +49,6 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     # does not even get called unless spanner_graphs has already been confirmed
     # to exist upstream.
     from google.cloud.spanner_v1.types import StructType, Type, TypeCode
-    import networkx
     from spanner_graphs.conversion import get_nodes_edges
 
     try:
@@ -71,7 +70,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
             )
             data[column_name] = []
             tabular_data[column_name] = []
-            for value_key, value_value in column_value.items():
+            for value_key, value_value in column_value.items():                
                 try:
                     row_json = json.loads(value_value)
                     data[column_name].append(row_json)
@@ -209,6 +208,27 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
         response = convert_graph_data(query_results=json.loads(data["params"]))
         self.do_data_response(response)
 
+    def handle_post_node_expansion(self):
+        """Handle POST requests for node expansion.
+        
+        Expects a JSON payload with:
+        - params: A JSON string containing connection parameters (project, instance, database, graph)
+        - request: A dictionary with node details (uid, node_labels, node_properties, direction, edge_label)
+        """
+        try:
+            data = self.parse_post_data()
+
+            # Execute node expansion with:
+            # - params_str: JSON string with connection parameters (project, instance, database, graph)
+            # - request: Dict with node details (uid, node_labels, node_properties, direction, edge_label)
+            self.do_data_response(execute_node_expansion(
+                params_str=data.get("params"),
+                request=data.get("request")
+            ))
+        except BaseException as e:
+            self.do_error_response(e)
+            return
+
     def do_GET(self):
         assert self.path == GraphServer.endpoints["get_ping"]
         self.handle_get_ping()
@@ -216,6 +236,8 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == GraphServer.endpoints["post_ping"]:
             self.handle_post_ping()
+        elif self.path == GraphServer.endpoints["post_node_expansion"]:
+            self.handle_post_node_expansion()
         else:
             assert self.path == GraphServer.endpoints["post_query"]
             self.handle_post_query()
