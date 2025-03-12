@@ -619,12 +619,9 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
             - The query results with nodes and edges
             - An error message if the request failed
     """
-    try:
-        return IPython.core.display.JSON(
-            graph_server.execute_node_expansion(params_str, request)
-        )
-    except BaseException as e:
-        return IPython.core.display.JSON({"error": e})
+    return IPython.core.display.JSON(
+        graph_server.execute_node_expansion(params_str, request)
+    )
 
 
 singleton_server_thread: threading.Thread = None

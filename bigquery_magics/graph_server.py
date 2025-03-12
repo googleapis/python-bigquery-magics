@@ -85,12 +85,14 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                     tabular_data[column_name].append(str(value_value))
 
         nodes, edges = get_nodes_edges(data, fields, schema_json=None)
+        nodes_json = [node.to_json() for node in nodes]
+        edges_json = [edge.to_json() for edge in edges]
 
         return {
             "response": {
                 # These fields populate the graph result view.
-                "nodes": [node.to_json() for node in nodes],
-                "edges": [edge.to_json() for edge in edges],
+                "nodes": nodes_json,
+                "edges": edges_json,
                 # This populates the visualizer's schema view, but not yet implemented on the
                 # BigQuery side.
                 "schema": None,
