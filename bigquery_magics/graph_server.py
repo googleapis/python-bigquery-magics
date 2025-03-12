@@ -74,7 +74,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
             )
             data[column_name] = []
             tabular_data[column_name] = []
-            for value_key, value_value in column_value.items():                
+            for value_key, value_value in column_value.items():
                 try:
                     row_json = json.loads(value_value)
                     data[column_name].append(row_json)
@@ -117,7 +117,7 @@ class GraphServer:
     endpoints = {
         "get_ping": "/get_ping",
         "post_ping": "/post_ping",
-        "post_node_expansion": '/post_node_expansion',
+        "post_node_expansion": "/post_node_expansion",
         "post_query": "/post_query",
     }
 
@@ -215,7 +215,7 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_post_node_expansion(self):
         """Handle POST requests for node expansion.
-        
+
         Expects a JSON payload with:
         - params: A JSON string containing connection parameters (project, instance, database, graph)
         - request: A dictionary with node details (uid, node_labels, node_properties, direction, edge_label)
@@ -226,10 +226,11 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
             # Execute node expansion with:
             # - params_str: JSON string with connection parameters (project, instance, database, graph)
             # - request: Dict with node details (uid, node_labels, node_properties, direction, edge_label)
-            self.do_data_response(execute_node_expansion(
-                params_str=data.get("params"),
-                request=data.get("request")
-            ))
+            self.do_data_response(
+                execute_node_expansion(
+                    params_str=data.get("params"), request=data.get("request")
+                )
+            )
         except BaseException as e:
             self.do_error_response(e)
             return

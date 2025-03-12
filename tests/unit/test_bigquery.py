@@ -912,12 +912,15 @@ def test_colab_query_callback():
 )
 def test_colab_node_expansion_callback():
     result = bigquery_magics.bigquery._colab_node_expansion_callback(
-        request={"uid": "test_uid",
-                 "node_labels": ["label1, label2"],
-                 "node_properites": {},
-                 "direction": "INCOMING",
-                 "edge_label": None},
-        params_str="{}")
+        request={
+            "uid": "test_uid",
+            "node_labels": ["label1, label2"],
+            "node_properites": {},
+            "direction": "INCOMING",
+            "edge_label": None,
+        },
+        params_str="{}",
+    )
 
     assert result.data == {"error": "Node expansion not yet implemented"}
 

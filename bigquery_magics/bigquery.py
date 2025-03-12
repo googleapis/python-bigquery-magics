@@ -601,9 +601,10 @@ def _colab_query_callback(query: str, params: str):
         graph_server.convert_graph_data(query_results=json.loads(params))
     )
 
+
 def _colab_node_expansion_callback(request: dict, params_str: str):
     """Handle node expansion requests in Google Colab environment
-    
+
     Args:
         request: A dictionary containing node expansion details including:
             - uid: str - Unique identifier of the node to expand
@@ -612,14 +613,16 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
             - direction: str - Direction of expansion ("INCOMING" or "OUTGOING")
             - edge_label: Optional[str] - Label of edges to filter by
         params_str: A JSON string containing connection parameters
-    
+
     Returns:
         JSON: A JSON-serialized response containing either:
             - The query results with nodes and edges
             - An error message if the request failed
     """
     try:
-        return IPython.core.display.JSON(graph_server.execute_node_expansion(params_str, request))
+        return IPython.core.display.JSON(
+            graph_server.execute_node_expansion(params_str, request)
+        )
     except BaseException as e:
         return IPython.core.display.JSON({"error": e})
 
@@ -644,7 +647,9 @@ def _add_graph_widget(query_result):
         from google.colab import output
 
         output.register_callback("graph_visualization.Query", _colab_query_callback)
-        output.register_callback("graph_visualization.NodeExpansion", _colab_node_expansion_callback)
+        output.register_callback(
+            "graph_visualization.NodeExpansion", _colab_node_expansion_callback
+        )
     except ImportError:
         global singleton_server_thread
         alive = singleton_server_thread and singleton_server_thread.is_alive()
