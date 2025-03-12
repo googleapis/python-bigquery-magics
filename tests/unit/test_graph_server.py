@@ -440,7 +440,6 @@ class TestGraphServer(unittest.TestCase):
             response.json(), {"error": "Node expansion not yet implemented"}
         )
 
-
     @pytest.mark.skipif(
         graph_visualization is None, reason="Requires `spanner-graph-notebook`"
     )
