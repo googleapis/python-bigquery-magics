@@ -640,6 +640,7 @@ def _add_graph_widget(query_result):
     # visualizer widget. In colab, we are not able to create an http server on a
     # background thread, so we use a special colab-specific api to register a callback,
     # to be invoked from Javascript.
+    port = None
     try:
         from google.colab import output
 
@@ -647,16 +648,22 @@ def _add_graph_widget(query_result):
         output.register_callback(
             "graph_visualization.NodeExpansion", _colab_node_expansion_callback
         )
+
+        # In colab mode, the Javascript doesn't use the port value we pass in, as there is no
+        # graph server, but it still has to be set to avoid triggering an exception.
+        # TODO: Clean this up when the Javascript is fixed on the spanner-graph-notebook side.
+        port = 0
     except ImportError:
         global singleton_server_thread
         alive = singleton_server_thread and singleton_server_thread.is_alive()
         if not alive:
             singleton_server_thread = graph_server.graph_server.init()
+        port = graph_server.graph_server.port
 
     # Create html to invoke the graph server
     html_content = generate_visualization_html(
         query="placeholder query",
-        port=graph_server.graph_server.port,
+        port=port,
         params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
     )
     IPython.display.display(IPython.core.display.HTML(html_content))
