@@ -228,7 +228,7 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
             # - request: Dict with node details (uid, node_labels, node_properties, direction, edge_label)
             self.do_data_response(
                 execute_node_expansion(
-                    params_str=data.get("params"), request=data.get("request")
+                    params=data.get("params"), request=data.get("request")
                 )
             )
         except BaseException as e:
