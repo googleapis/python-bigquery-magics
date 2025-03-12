@@ -85,8 +85,13 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                     tabular_data[column_name].append(str(value_value))
 
         nodes, edges = get_nodes_edges(data, fields, schema_json=None)
-        nodes_json = [node.to_json() for node in nodes]
-        # edges_json = [edge.to_json() for edge in edges]
+
+        # Convert nodes and edges to json objects.
+        # (Unfortunately, the code coverage tooling does not allow this
+        #  to be expressed as list comprehension).
+        nodes_json = []
+        for node in nodes:
+            nodes_json.append(node.to_json())
         edges_json = []
         for edge in edges:
             edges_json.append(edge.to_json())
