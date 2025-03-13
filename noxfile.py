@@ -481,7 +481,7 @@ def prerelease_deps(session, protobuf_implementation):
     ]
 
     for dep in prerel_deps:
-        session.install("--pre", "--no-deps", "--upgrade", dep)
+        session.install("--pre", "--no-deps", "--upgrade", dep)        
 
     # Remaining dependencies
     other_deps = [
@@ -489,6 +489,14 @@ def prerelease_deps(session, protobuf_implementation):
     ]
     session.install(*other_deps)
 
+    # Install spanner-graph-notebook, python-bigquery, and python-bigquery-storage
+    # from main to detect any potential breaking changes. For context, see:
+    # https://github.com/googleapis/python-bigquery-pandas/issues/854
+    session.install(
+        "https://github.com/cloudspannerecosystem/spanner-graph-notebook/archive/refs/heads/main.zip",
+        "https://github.com/googleapis/python-bigquery/archive/main.zip",
+        "https://github.com/googleapis/python-bigquery-storage/archive/main.zip",
+    )
     # Print out prerelease package versions
     session.run(
         "python", "-c", "import google.protobuf; print(google.protobuf.__version__)"
