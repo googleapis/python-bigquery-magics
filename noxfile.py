@@ -481,7 +481,7 @@ def prerelease_deps(session, protobuf_implementation):
     ]
 
     for dep in prerel_deps:
-        session.install("--pre", "--no-deps", "--upgrade", dep)        
+        session.install("--pre", "--no-deps", "--upgrade", dep)
 
     # Remaining dependencies
     other_deps = [
