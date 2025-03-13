@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Optional
+import dataclasses
+import enum
+from typing import Optional, Union
 
 import google.api_core.client_options as client_options
 import google.cloud.bigquery as bigquery
@@ -26,7 +27,174 @@ def _get_default_credentials_with_project():
     return pydata_google_auth.default(scopes=_SCOPES, use_local_webserver=False)
 
 
-@dataclass
+class MissingReason(enum.Enum):
+    """Provides a way to disambiguate why an option is missing.
+
+    This is used instead of a None value to allow for custom validation and
+    docs generation.
+    """
+
+    # These missing reasons are because the engine doesn't support the feature,
+    # for example, use_rest_api on the bigframes engine. In this case, raise
+    # if the user has set it, as the magics would otherwise act in a way
+    # contrary to that in which the user explicitly requested.
+    NOT_SUPPORTED_BY_ENGINE_INFEASIBLE = enum.auto()
+
+    # This is like the above, but is theoretically possible. Include a call to
+    # action to reach out to the bigframes team if this is a feature they
+    # would like to use.
+    NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE = enum.auto()
+
+    # This missing reason is for options that are magics-only and apply to all
+    # engines. For example, the destination variable is a magics-only setting
+    # and doesn't affect how queries are handled by the engine.
+    ENGINE_UNIVERSAL = enum.auto()
+
+    # Similar to ENGINE_UNIVERSAL, these options do work, but there
+    # isn't a way to globally override them. Use this instead of ENGINE_UNIVERSAL
+    # for things that really do require some explicit support in the engine
+    # (e.g. query parameters) but don't have a way to set them for all queries.
+    SUPPORTED_BY_ENGINE_BUT_NO_OPTION = enum.auto()
+
+
+@dataclasses.dataclass(frozen=True)
+class MagicsSetting:
+    """Encapsulates information about settings and how to set them.
+
+    This is used to generate documentation, merge settings across the various
+    ways they are duplicated, and to validate settings provided by a user.
+    """
+
+    description: str
+    cell_arg: Union[MissingReason, str]
+    magics_context: Union[MissingReason, str]
+    bigframes_option: Union[MissingReason, str]
+
+
+magics_settings = [
+    MagicsSetting(
+        description="Destination variable name.",
+        cell_arg="destination_var",
+        magics_context="default_variable",
+        bigframes_option=MissingReason.ENGINE_UNIVERSAL,
+    ),
+    MagicsSetting(
+        description="To save the output of the query to a new BigQuery table.",
+        cell_arg="--destination_table",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="Project to use for executing this query. Defaults to the"
+        " context project.",
+        cell_arg="--project",
+        magics_context="project",
+        bigframes_option="bigquery.project",
+    ),
+    MagicsSetting(
+        description="Limits the number of rows in the returned DataFrame.",
+        cell_arg="--max_results",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+    ),
+    MagicsSetting(
+        description="Max bytes billed to use for executing a query.",
+        cell_arg="--maximum_bytes_billed",
+        magics_context="default_query_job_config",
+        bigframes_option="bigframes.options.compute.maximum_bytes_billed",
+    ),
+    MagicsSetting(
+        description="Set it to a query to estimate costs.",
+        cell_arg="--dry_run",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="Set it to use instead of Standard SQL.",
+        cell_arg="--use_legacy_sql",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="BigQuery REST API endpoint.",
+        cell_arg="--bigquery_api_endpoint",
+        magics_context="bqstorage_client_options",
+        bigframes_option="bigquery.client_endpoints_override['bqclient']",  # BROKEN: cell arg override doesn't work with bigframes
+    ),
+    MagicsSetting(
+        description="BigQery Storage API endpoint.",
+        cell_arg="--bqstorage_api_endpoint",
+        magics_context="bqstorage_client_options",
+        bigframes_option="bigquery.client_endpoints_override['bqclient']",  # BROKEN: cell arg override doesn't work with bigframes
+    ),
+    MagicsSetting(
+        description="Do not use cached query results.",
+        cell_arg="--no_query_cache",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="[Deprecated] Default is BigQuery Storage API.",
+        cell_arg="--use_bqstorage_api",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_INFEASIBLE,
+    ),
+    MagicsSetting(
+        description="Use the BigQuery REST API to download results instead of "
+        "the BigQuery Storage Read API.",
+        cell_arg="--use_rest_api",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_INFEASIBLE,
+    ),
+    MagicsSetting(
+        description="Print verbose output, including the query job ID and the"
+        " amount of time for the query to finish.",
+        cell_arg="--verbose",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="To format the query string. Should be followed by a string representation"
+        " of a dictionary or a reference to a dictionary in the same format by"
+        " including $ before the variable.",
+        cell_arg="--params",
+        magics_context="default_query_job_config",
+        bigframes_option=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+    ),
+    MagicsSetting(
+        description="To display a progress bar while executing the query.",
+        cell_arg="--progress_bar_type",
+        magics_context="progress_bar_type",
+        bigframes_option="progress_bar",  # BROKEN: cell arg override doesn't work with bigframes
+    ),
+    MagicsSetting(
+        description="Location to execute query.",
+        cell_arg="--location",
+        magics_context=MissingReason.SUPPORTED_BY_ENGINE_BUT_NO_OPTION,
+        bigframes_option="location",  # BROKEN: cell arg override doesn't work with bigframes
+    ),
+    MagicsSetting(
+        description="Set execution engine, either 'pandas' or 'bigframes'.",
+        cell_arg="--connection",
+        magics_context="_connection",
+        bigframes_option="bq_connection",
+    ),
+    MagicsSetting(
+        description="Set execution engine, either 'pandas' or 'bigframes'.",
+        cell_arg="--engine",
+        magics_context="engine",
+        bigframes_option=MissingReason.ENGINE_UNIVERSAL,
+    ),
+    MagicsSetting(
+        description="Set execution engine, either 'pandas' or 'bigframes'.",
+        cell_arg="--credentials",
+        magics_context=MissingReason.NOT_SUPPORTED_BY_ENGINE_BUT_POSSIBLE,
+        bigframes_option="credentials",  # BROKEN: cell arg override doesn't work with bigframes
+    ),
+]
+
+
+@dataclasses.dataclass
 class Context(object):
     """Storage for objects to be used throughout an IPython notebook session.
 
@@ -61,7 +229,7 @@ class Context(object):
             special network connections are required. Normally you would be
             using the https://bigquery.googleapis.com/ end point.
 
-        Example:
+        Example:g
             Manually setting the endpoint:
 
             >>> from google.cloud.bigquery import magics
@@ -189,7 +357,7 @@ class Context(object):
         If using "bigframes", the query result will be stored in a bigframes dataframe instead.
 
         Example:
-            Manully setting the content engine:
+            Manually setting the content engine:
 
             >>> from google.cloud.bigquery import magics
             >>> bigquery_magics.context.engine = 'bigframes'
