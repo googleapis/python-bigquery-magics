@@ -500,6 +500,7 @@ def prerelease_deps(session, protobuf_implementation):
         "https://github.com/googleapis/python-bigquery-storage/archive/main.zip",
     )
     # Print out prerelease package versions
+    session.run("pip", "freeze")
     session.run(
         "python", "-c", "import google.protobuf; print(google.protobuf.__version__)"
     )
