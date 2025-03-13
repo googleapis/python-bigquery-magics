@@ -493,6 +493,8 @@ def prerelease_deps(session, protobuf_implementation):
     # from main to detect any potential breaking changes. For context, see:
     # https://github.com/googleapis/python-bigquery-pandas/issues/854
     session.install(
+        "--pre",
+        "--upgrade",
         "https://github.com/cloudspannerecosystem/spanner-graph-notebook/archive/refs/heads/main.zip",
         "https://github.com/googleapis/python-bigquery/archive/main.zip",
         "https://github.com/googleapis/python-bigquery-storage/archive/main.zip",
