@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/googleapis/python-bigquery-magics/compare/v0.8.0...v0.8.1) (2025-03-14)
+
+
+### Bug Fixes
+
+* Remove setup.cfg configuration for creating universal wheels ([#106](https://github.com/googleapis/python-bigquery-magics/issues/106)) ([fe3ec29](https://github.com/googleapis/python-bigquery-magics/commit/fe3ec29fefb7ca9195484d13f2bf15c65cf20614))
+
 ## [0.8.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.7.0...v0.8.0) (2025-03-13)
 
 
