@@ -497,10 +497,9 @@ def _query_with_bigframes(query: str, params: List[Any], args: Any):
         raise ValueError("Dry run is not supported by bigframes engine.")
 
     if bpd is None:
-        raise ValueError("Bigframes package is not installed.")
-
-    bpd.options.bigquery.project = context.project
-    bpd.options.bigquery.credentials = context.credentials
+        raise ValueError(
+            "Please install the 'bigframes' package (pip install bigframes) to use the bigframes engine."
+        )
 
     max_results = int(args.max_results) if args.max_results else None
 
