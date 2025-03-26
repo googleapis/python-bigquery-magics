@@ -2648,7 +2648,10 @@ def test_bigquery_magic_bigframes_with_dry_run__should_fail():
 
 
 def test_test_bigquery_magic__extension_not_loaded__is_registered():
-    assert bigquery_magics.is_registered is not None
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.unload_extension("bigquery_magics")
+    assert bigquery_magics.is_registered is False
 
 
 def test_test_bigquery_magic__extension_loaded__is_registered_set_to_true():
