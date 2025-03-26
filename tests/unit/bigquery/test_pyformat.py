@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from unittest import mock
+from typing import List
 
 from IPython.testing import globalipapp
 import pytest
@@ -31,7 +34,7 @@ import pytest
         ),
     ),
 )
-def test_parse_fields(sql_template: str, expected: list[str]):
+def test_parse_fields(sql_template: str, expected: List[str]):
     import bigquery_magics.pyformat
 
     fields = bigquery_magics.pyformat._parse_fields(sql_template)
