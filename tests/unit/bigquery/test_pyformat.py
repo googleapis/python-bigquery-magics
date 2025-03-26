@@ -14,8 +14,8 @@
 
 from __future__ import annotations
 
-from unittest import mock
 from typing import List
+from unittest import mock
 
 from IPython.testing import globalipapp
 import pytest
