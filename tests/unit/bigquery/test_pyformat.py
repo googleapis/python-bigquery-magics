@@ -40,6 +40,7 @@ def test_parse_fields(sql_template: str, expected: list[str]):
     assert fields == expected
 
 
+@pytest.mark.usefixtures("mock_credentials")
 def test_pyformat_with_unsupported_type_raises_typeerror(ipython_ns_cleanup):
     globalipapp.start_ipython()
     ip = globalipapp.get_ipython()
@@ -57,6 +58,7 @@ def test_pyformat_with_unsupported_type_raises_typeerror(ipython_ns_cleanup):
         ip.run_cell_magic("bigquery", "--pyformat", sql)
 
 
+@pytest.mark.usefixtures("mock_credentials")
 def test_pyformat_with_missing_variable_raises_keyerror():
     globalipapp.start_ipython()
     ip = globalipapp.get_ipython()
@@ -68,6 +70,7 @@ def test_pyformat_with_missing_variable_raises_keyerror():
         ip.run_cell_magic("bigquery", "--pyformat", sql)
 
 
+@pytest.mark.usefixtures("mock_credentials")
 def test_pyformat_with_no_variables():
     globalipapp.start_ipython()
     ip = globalipapp.get_ipython()
@@ -159,6 +162,7 @@ def test_pyformat_with_query_dollar_variable_replaces_variables(ipython_ns_clean
         run_query_mock.assert_called_once_with(mock.ANY, expected_sql, mock.ANY)
 
 
+@pytest.mark.usefixtures("mock_credentials")
 def test_without_pyformat_doesnt_modify_curly_brackets(ipython_ns_cleanup):
     globalipapp.start_ipython()
     ip = globalipapp.get_ipython()
