@@ -16,8 +16,11 @@ from concurrent import futures
 import contextlib
 import copy
 import json
+import os
+import pathlib
 import re
 import sys
+import tempfile
 from unittest import mock
 import warnings
 
@@ -58,6 +61,8 @@ try:
     import geopandas as gpd
 except ImportError:
     gpd = None
+
+Path = pathlib.Path
 
 
 def make_connection(*args):
@@ -926,6 +931,147 @@ def test_bigquery_magic_default_connection_user_agent():
     assert (
         client_info_arg.user_agent
         == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__}"
+    )
+
+
+def test_bigquery_magic_default_connection_user_agent_vscode():
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
+    env_patch = mock.patch.dict(os.environ, {"VSCODE_PID": "1234"}, clear=True)
+
+    with conn_patch as conn, run_query_patch, default_patch, env_patch:
+        ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
+
+    client_info_arg = conn.call_args[1].get("client_info")
+    assert client_info_arg is not None
+    assert (
+        client_info_arg.user_agent
+        == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} vscode"
+    )
+
+
+def test_bigquery_magic_default_connection_user_agent_vscode_extension():
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
+    env_patch = mock.patch.dict(os.environ, {"VSCODE_PID": "1234"}, clear=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        user_home = Path(tmpdir)
+        plugin_dir = (
+            user_home / ".vscode" / "extensions" / "googlecloudtools.cloudcode-0.12"
+        )
+        plugin_config = plugin_dir / "package.json"
+
+        # originally pluging config does not exist
+        assert not plugin_config.exists()
+
+        # simulate plugin installation by creating plugin config on disk
+        plugin_dir.mkdir(parents=True)
+        with open(plugin_config, "w") as f:
+            f.write("{}")
+
+        home_dir_patch = mock.patch("pathlib.Path.home", return_value=user_home)
+
+        with conn_patch as conn, (
+            run_query_patch
+        ), default_patch, env_patch, home_dir_patch:
+            ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
+
+    client_info_arg = conn.call_args[1].get("client_info")
+    assert client_info_arg is not None
+    assert (
+        client_info_arg.user_agent
+        == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} vscode googlecloudtools.cloudcode"
+    )
+
+
+def test_bigquery_magic_default_connection_user_agent_jupyter():
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
+    env_patch = mock.patch.dict(os.environ, {"JPY_PARENT_PID": "1234"}, clear=True)
+
+    with conn_patch as conn, run_query_patch, default_patch, env_patch:
+        ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
+
+    client_info_arg = conn.call_args[1].get("client_info")
+    assert client_info_arg is not None
+    assert (
+        client_info_arg.user_agent
+        == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} jupyter"
+    )
+
+
+def test_bigquery_magic_default_connection_user_agent_jupyter_extension():
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
+    env_patch = mock.patch.dict(os.environ, {"JPY_PARENT_PID": "1234"}, clear=True)
+
+    def custom_import_module_side_effect(name, package=None):
+        if name == "bigquery_jupyter_plugin":
+            return mock.MagicMock()
+        else:
+            import importlib
+
+            return importlib.import_module(name, package)
+
+    extension_import_patch = mock.patch(
+        "importlib.import_module", side_effect=custom_import_module_side_effect
+    )
+
+    with conn_patch as conn, (
+        run_query_patch
+    ), default_patch, env_patch, extension_import_patch:
+        ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
+
+    client_info_arg = conn.call_args[1].get("client_info")
+    assert client_info_arg is not None
+    assert (
+        client_info_arg.user_agent
+        == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} jupyter bigquery_jupyter_plugin"
     )
 
 
