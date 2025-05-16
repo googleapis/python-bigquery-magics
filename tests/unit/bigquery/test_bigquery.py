@@ -979,17 +979,17 @@ def test_bigquery_magic_default_connection_user_agent_vscode_extension():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         user_home = Path(tmpdir)
-        plugin_dir = (
+        extension_dir = (
             user_home / ".vscode" / "extensions" / "googlecloudtools.cloudcode-0.12"
         )
-        plugin_config = plugin_dir / "package.json"
+        extension_config = extension_dir / "package.json"
 
-        # originally pluging config does not exist
-        assert not plugin_config.exists()
+        # originally extension config does not exist
+        assert not extension_config.exists()
 
-        # simulate plugin installation by creating plugin config on disk
-        plugin_dir.mkdir(parents=True)
-        with open(plugin_config, "w") as f:
+        # simulate extension installation by creating extension config on disk
+        extension_dir.mkdir(parents=True)
+        with open(extension_config, "w") as f:
             f.write("{}")
 
         home_dir_patch = mock.patch("pathlib.Path.home", return_value=user_home)
@@ -1004,6 +1004,52 @@ def test_bigquery_magic_default_connection_user_agent_vscode_extension():
     assert (
         client_info_arg.user_agent
         == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} vscode googlecloudtools.cloudcode"
+    )
+
+
+def test_bigquery_magic_default_connection_user_agent_vscode_extension_corrupted():
+    globalipapp.start_ipython()
+    ip = globalipapp.get_ipython()
+    ip.extension_manager.load_extension("bigquery_magics")
+    bigquery_magics.context._connection = None
+
+    credentials_mock = mock.create_autospec(
+        google.auth.credentials.Credentials, instance=True
+    )
+    default_patch = mock.patch(
+        "google.auth.default", return_value=(credentials_mock, "general-project")
+    )
+    run_query_patch = mock.patch("bigquery_magics.bigquery._run_query", autospec=True)
+    conn_patch = mock.patch("google.cloud.bigquery.client.Connection", autospec=True)
+    env_patch = mock.patch.dict(os.environ, {"VSCODE_PID": "1234"}, clear=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        user_home = Path(tmpdir)
+        extension_dir = (
+            user_home / ".vscode" / "extensions" / "googlecloudtools.cloudcode-0.12"
+        )
+        extension_config = extension_dir / "package.json"
+
+        # originally extension config does not exist
+        assert not extension_config.exists()
+
+        # simulate corrupted extension installation by creating extension config on
+        # disk with invalid json
+        extension_dir.mkdir(parents=True)
+        extension_config.touch()
+
+        home_dir_patch = mock.patch("pathlib.Path.home", return_value=user_home)
+
+        with conn_patch as conn, (
+            run_query_patch
+        ), default_patch, env_patch, home_dir_patch:
+            ip.run_cell_magic("bigquery", "", "SELECT 17 as num")
+
+    client_info_arg = conn.call_args[1].get("client_info")
+    assert client_info_arg is not None
+    assert (
+        client_info_arg.user_agent
+        == f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.__version__} vscode"
     )
 
 
@@ -1034,7 +1080,7 @@ def test_bigquery_magic_default_connection_user_agent_jupyter():
     )
 
 
-def test_bigquery_magic_default_connection_user_agent_jupyter_extension():
+def test_bigquery_magic_default_connection_user_agent_jupyter_plugin():
     globalipapp.start_ipython()
     ip = globalipapp.get_ipython()
     ip.extension_manager.load_extension("bigquery_magics")
@@ -1057,6 +1103,11 @@ def test_bigquery_magic_default_connection_user_agent_jupyter_extension():
             import importlib
 
             return importlib.import_module(name, package)
+
+    assert isinstance(
+        custom_import_module_side_effect("bigquery_jupyter_plugin"), mock.MagicMock
+    )
+    assert custom_import_module_side_effect("bigquery_magics") is bigquery_magics
 
     extension_import_patch = mock.patch(
         "importlib.import_module", side_effect=custom_import_module_side_effect

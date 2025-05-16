@@ -51,17 +51,13 @@ def _is_vscode_extension_installed(extension_id: str) -> bool:
             return False
 
         # Iterate through the subdirectories in the extensions directory.
-        for item in vscode_extensions_dir.iterdir():
-            # Ignore non-directories.
-            if not item.is_dir():
-                continue
-
-            # Directory must start with the extension ID.
-            if not item.name.startswith(extension_id + "-"):
-                continue
-
+        extension_dirs = filter(
+            lambda p: p.is_dir() and p.name.startswith(extension_id + "-"),
+            vscode_extensions_dir.iterdir(),
+        )
+        for extension_dir in extension_dirs:
             # As a more robust check, the manifest file must exist.
-            manifest_path = item / "package.json"
+            manifest_path = extension_dir / "package.json"
             if not manifest_path.exists() or not manifest_path.is_file():
                 continue
 
