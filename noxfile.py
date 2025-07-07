@@ -479,7 +479,8 @@ def prerelease_deps(session, protobuf_implementation):
     session.install(
         "--pre",
         "--upgrade",
-        "https://github.com/cloudspannerecosystem/spanner-graph-notebook/archive/refs/heads/main.zip",
+        # TODO(https://github.com/googleapis/python-bigquery-magics/pull/126): Install this again when we relax the pin.
+        # "https://github.com/cloudspannerecosystem/spanner-graph-notebook/archive/refs/heads/main.zip",
         "https://github.com/googleapis/python-bigquery/archive/main.zip",
         "https://github.com/googleapis/python-bigquery-storage/archive/main.zip",
     )
