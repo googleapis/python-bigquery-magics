@@ -50,6 +50,7 @@ templated_files = common.py_library(
         "pandas": "https://pandas.pydata.org/pandas-docs/stable/",
         "pydata-google-auth": "https://pydata-google-auth.readthedocs.io/en/latest/",
     },
+    default_python="3.10",
 )
 s.move(
     templated_files,
@@ -59,7 +60,6 @@ s.move(
         "docs/multiprocessing.rst",
         "noxfile.py",
         "README.rst",
-        ".github/workflows/unittest.yml",
     ],
 )
 
