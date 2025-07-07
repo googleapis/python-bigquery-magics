@@ -32,7 +32,7 @@ extras_storage = ["bqstorage"]
 extras_bf = ["bqstorage", "bigframes", "geopandas"]
 extras_spanner = ["spanner-graph-notebook"]
 extras_by_python = {
-    "3.9": extras_bf,
+    "3.9": extras_storage,
     "3.10": extras_bf,
     # Use a middle version of Python to test when no extras are installed.
     "3.11": [],
