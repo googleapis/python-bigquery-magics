@@ -50,7 +50,7 @@ templated_files = common.py_library(
         "pandas": "https://pandas.pydata.org/pandas-docs/stable/",
         "pydata-google-auth": "https://pydata-google-auth.readthedocs.io/en/latest/",
     },
-    default_python="3.10",
+    default_python_version="3.10",
 )
 s.move(
     templated_files,
