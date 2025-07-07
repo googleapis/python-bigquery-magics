@@ -32,9 +32,9 @@ BLACK_VERSION = "black[jupyter]==23.7.0"
 ISORT_VERSION = "isort==5.11.0"
 LINT_PATHS = ["docs", "bigquery_magics", "tests", "noxfile.py", "setup.py"]
 
-DEFAULT_PYTHON_VERSION = "3.8"
+DEFAULT_PYTHON_VERSION = "3.10"
 
-UNIT_TEST_PYTHON_VERSIONS: List[str] = ["3.7", "3.8", "3.9", "3.11", "3.12", "3.13"]
+UNIT_TEST_PYTHON_VERSIONS: List[str] = ["3.9", "3.11", "3.12", "3.13"]
 UNIT_TEST_STANDARD_DEPENDENCIES = [
     "mock",
     "asyncmock",
@@ -49,16 +49,9 @@ UNIT_TEST_LOCAL_DEPENDENCIES: List[str] = []
 UNIT_TEST_DEPENDENCIES: List[str] = []
 UNIT_TEST_EXTRAS: List[str] = []
 UNIT_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
-    "3.7": [
-        "bqstorage",
-    ],
-    "3.8": [
-        "bqstorage",
-    ],
+
     "3.9": [
         "bqstorage",
-        "bigframes",
-        "geopandas",
     ],
     "3.10": [
         "bqstorage",
@@ -77,7 +70,7 @@ UNIT_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
     ],
 }
 
-SYSTEM_TEST_PYTHON_VERSIONS: List[str] = ["3.8", "3.11", "3.12", "3.13"]
+SYSTEM_TEST_PYTHON_VERSIONS: List[str] = ["3.9", "3.11", "3.12", "3.13"]
 SYSTEM_TEST_STANDARD_DEPENDENCIES: List[str] = [
     "mock",
     "pytest",
@@ -88,16 +81,8 @@ SYSTEM_TEST_LOCAL_DEPENDENCIES: List[str] = []
 SYSTEM_TEST_DEPENDENCIES: List[str] = []
 SYSTEM_TEST_EXTRAS: List[str] = []
 SYSTEM_TEST_EXTRAS_BY_PYTHON: Dict[str, List[str]] = {
-    "3.7": [
-        "bqstorage",
-    ],
-    "3.8": [
-        "bqstorage",
-    ],
     "3.9": [
         "bqstorage",
-        "bigframes",
-        "geopandas",
     ],
     "3.10": [
         "bqstorage",
