@@ -703,7 +703,6 @@ def _add_graph_widget(query_result):
         port=port,
         params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
     )
-    # raise ValueError('Got here #1:\n%s' % html_content)
     IPython.display.display(IPython.core.display.HTML(html_content))
 
 
