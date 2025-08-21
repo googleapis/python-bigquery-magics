@@ -49,7 +49,7 @@ def _stringify_properties(d: Any) -> Any:
         new_list = []
         for item in d:
             new_list.append(_stringify_properties(item))
-        return new_list    
+        return new_list
     else:
         return _stringify_value(d)
 
@@ -127,7 +127,7 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
         for edge in edges:
             edges_json.append(edge.to_json())
 
-        result = {
+        return {
             "response": {
                 # These fields populate the graph result view.
                 "nodes": nodes_json,
@@ -139,7 +139,6 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 "query_result": tabular_data,
             }
         }
-        return result
     except Exception as e:
         return {"error": getattr(e, "message", str(e))}
 
