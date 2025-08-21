@@ -82,8 +82,8 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     # Note that these imports do not need to be in a try/except, as this function
     # does not even get called unless spanner_graphs has already been confirmed
     # to exist upstream.
-    from spanner_graphs.database import SpannerFieldInfo
     from spanner_graphs.conversion import get_nodes_edges
+    from spanner_graphs.database import SpannerFieldInfo
 
     try:
         fields: List[SpannerFieldInfo] = []
