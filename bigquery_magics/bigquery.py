@@ -53,6 +53,8 @@
         amount of time for the query to complete will not be cleared after the
         query is finished. By default, this information will be displayed but
         will be cleared after the query is finished.
+    * ``--graph`` (Optional[line argument]):
+        Visualizes the query result as a graph.
     * ``--use_geodataframe <params>`` (Optional[line argument]):
         Return the query result as a geopandas.GeoDataFrame.
         If present, the argument that follows the ``--use_geodataframe`` flag
@@ -61,7 +63,6 @@
 
         See geopandas.GeoDataFrame for details.
         The Coordinate Reference System will be set to “EPSG:4326”.
-
     * ``--params <params>`` (Optional[line argument]):
         If present, the argument following the ``--params`` flag must be
         either:
@@ -76,6 +77,14 @@
           serializable. The variable reference is indicated by a ``$`` before
           the variable name (ex. ``$my_dict_var``). See ``In[6]`` and ``In[7]``
           in the Examples section below.
+    * ``--engine <engine>`` (Optional[line argument]):
+          Set the execution engine, either 'pandas' (default) or 'bigframes'
+          (experimental).
+    * ``--pyformat`` (Optional[line argument]):
+          Warning! Do not use with user-provided values.
+          This doesn't escape values. Use --params instead for proper SQL escaping.
+          This enables Python string formatting in the query text.
+          Useful for values not supported by SQL query params such as table IDs.
 
     * ``<query>`` (required, cell argument):
         SQL query to run. If the query does not contain any whitespace (aside
@@ -97,14 +106,15 @@ from __future__ import print_function
 import ast
 from concurrent import futures
 import copy
+import json
 import re
 import sys
+import threading
 import time
 from typing import Any, List, Tuple
 import warnings
 
 import IPython  # type: ignore
-from IPython import display  # type: ignore
 from IPython.core import magic_arguments  # type: ignore
 from IPython.core.getipython import get_ipython
 from google.api_core import client_info
@@ -114,11 +124,14 @@ from google.cloud.bigquery import exceptions
 from google.cloud.bigquery.dataset import DatasetReference
 from google.cloud.bigquery.dbapi import _helpers
 from google.cloud.bigquery.job import QueryJobConfig
+import pandas
 
+from bigquery_magics import environment
 from bigquery_magics import line_arg_parser as lap
 import bigquery_magics._versions_helpers
 import bigquery_magics.config
-import bigquery_magics.line_arg_parser.exceptions
+import bigquery_magics.graph_server as graph_server
+import bigquery_magics.pyformat
 import bigquery_magics.version
 
 try:
@@ -131,8 +144,25 @@ try:
 except ImportError:
     bpd = None
 
-USER_AGENT = f"ipython-{IPython.__version__} bigquery-magics/{bigquery_magics.version.__version__}"
 context = bigquery_magics.config.context
+
+
+def _get_user_agent():
+    identities = [
+        f"ipython-{IPython.__version__}",
+        f"bigquery-magics/{bigquery_magics.version.__version__}",
+    ]
+
+    if environment.is_vscode():
+        identities.append("vscode")
+        if environment.is_vscode_google_cloud_code_extension_installed():
+            identities.append(environment.GOOGLE_CLOUD_CODE_EXTENSION_NAME)
+    elif environment.is_jupyter():
+        identities.append("jupyter")
+        if environment.is_jupyter_bigquery_plugin_installed():
+            identities.append(environment.BIGQUERY_JUPYTER_PLUGIN_NAME)
+
+    return " ".join(identities)
 
 
 def _handle_error(error, destination_var=None):
@@ -391,6 +421,23 @@ def _create_dataset_if_necessary(client, dataset_id):
         "Defaults to engine set in the query setting in console."
     ),
 )
+@magic_arguments.argument(
+    "--graph",
+    action="store_true",
+    default=False,
+    help=("Visualizes the query results as a graph"),
+)
+@magic_arguments.argument(
+    "--pyformat",
+    action="store_true",
+    default=False,
+    help=(
+        "Warning! Do not use with user-provided values. "
+        "This doesn't escape values. Use --params instead for proper SQL escaping. "
+        "This enables Python string formatting in the query text. "
+        "Useful for values not supported by SQL query params such as table IDs. "
+    ),
+)
 def _cell_magic(line, query):
     """Underlying function for bigquery cell magic
 
@@ -425,7 +472,7 @@ def _cell_magic(line, query):
 
 def _parse_magic_args(line: str) -> Tuple[List[Any], Any]:
     # The built-in parser does not recognize Python structures such as dicts, thus
-    # we extract the "--params" option and inteprpret it separately.
+    # we extract the "--params" option and interpret it separately.
     try:
         params_option_value, rest_of_args = _split_args_line(line)
 
@@ -505,7 +552,6 @@ def _query_with_bigframes(query: str, params: List[Any], args: Any):
 
 def _query_with_pandas(query: str, params: List[Any], args: Any):
     bq_client, bqstorage_client = _create_clients(args)
-
     try:
         return _make_bq_query(
             query,
@@ -530,7 +576,7 @@ def _create_clients(args: Any) -> Tuple[bigquery.Client, Any]:
         project=args.project or context.project,
         credentials=context.credentials,
         default_query_job_config=context.default_query_job_config,
-        client_info=client_info.ClientInfo(user_agent=USER_AGENT),
+        client_info=client_info.ClientInfo(user_agent=_get_user_agent()),
         client_options=bigquery_client_options,
         location=args.location,
     )
@@ -586,6 +632,98 @@ def _handle_result(result, args):
     return result
 
 
+def _colab_query_callback(query: str, params: str):
+    return IPython.core.display.JSON(
+        graph_server.convert_graph_data(query_results=json.loads(params))
+    )
+
+
+def _colab_node_expansion_callback(request: dict, params_str: str):
+    """Handle node expansion requests in Google Colab environment
+
+    Args:
+        request: A dictionary containing node expansion details including:
+            - uid: str - Unique identifier of the node to expand
+            - node_labels: List[str] - Labels of the node
+            - node_properties: List[Dict] - Properties of the node with key, value, and type
+            - direction: str - Direction of expansion ("INCOMING" or "OUTGOING")
+            - edge_label: Optional[str] - Label of edges to filter by
+        params_str: A JSON string containing connection parameters
+
+    Returns:
+        JSON: A JSON-serialized response containing either:
+            - The query results with nodes and edges
+            - An error message if the request failed
+    """
+    return IPython.core.display.JSON(
+        graph_server.execute_node_expansion(params_str, request)
+    )
+
+
+singleton_server_thread: threading.Thread = None
+
+
+def _add_graph_widget(query_result):
+    try:
+        from spanner_graphs.graph_visualization import generate_visualization_html
+    except ImportError as err:
+        customized_error = ImportError(
+            "Use of --graph requires the spanner-graph-notebook package to be installed. Install it with `pip install 'bigquery-magics[spanner-graph-notebook]'`."
+        )
+        raise customized_error from err
+
+    # In Jupyter, create an http server to be invoked from the Javascript to populate the
+    # visualizer widget. In colab, we are not able to create an http server on a
+    # background thread, so we use a special colab-specific api to register a callback,
+    # to be invoked from Javascript.
+    port = None
+    try:
+        from google.colab import output
+
+        output.register_callback("graph_visualization.Query", _colab_query_callback)
+        output.register_callback(
+            "graph_visualization.NodeExpansion", _colab_node_expansion_callback
+        )
+
+        # In colab mode, the Javascript doesn't use the port value we pass in, as there is no
+        # graph server, but it still has to be set to avoid triggering an exception.
+        # TODO: Clean this up when the Javascript is fixed on the spanner-graph-notebook side.
+        port = 0
+    except ImportError:
+        # In this code path, we are running on Jupyter, rather than colab.
+        global singleton_server_thread
+        alive = singleton_server_thread and singleton_server_thread.is_alive()
+        if not alive:
+            singleton_server_thread = graph_server.graph_server.init()
+        port = graph_server.graph_server.port
+
+    # Create html to invoke the graph server
+    html_content = generate_visualization_html(
+        query="placeholder query",
+        port=port,
+        params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
+    )
+    IPython.display.display(IPython.core.display.HTML(html_content))
+
+
+def _is_valid_json(s: str):
+    try:
+        json.loads(s)
+        return True
+    except (json.JSONDecodeError, TypeError):
+        return False
+
+
+def _supports_graph_widget(query_result: pandas.DataFrame):
+    # Visualization is supported if we have any json items to display.
+    # (Non-json items are excluded from visualization, but we still want to bring up
+    #  the visualizer for the json items.)
+    for column in query_result.columns:
+        if query_result[column].apply(_is_valid_json).any():
+            return True
+    return False
+
+
 def _make_bq_query(
     query: str,
     args: Any,
@@ -634,7 +772,7 @@ def _make_bq_query(
         return
 
     if not args.verbose:
-        display.clear_output()
+        IPython.display.clear_output()
 
     if args.dry_run:
         # TODO(tswast): Use _handle_result() here, too, but perhaps change the
@@ -671,31 +809,37 @@ def _make_bq_query(
     else:
         result = result.to_dataframe(**dataframe_kwargs)
 
+    if args.graph and _supports_graph_widget(result):
+        _add_graph_widget(result)
     return _handle_result(result, args)
 
 
 def _validate_and_resolve_query(query: str, args: Any) -> str:
     # Check if query is given as a reference to a variable.
-    if not query.startswith("$"):
-        return query
+    if query.startswith("$"):
+        query_var_name = query[1:]
 
-    query_var_name = query[1:]
+        if not query_var_name:
+            missing_msg = 'Missing query variable name, empty "$" is not allowed.'
+            raise NameError(missing_msg)
 
-    if not query_var_name:
-        missing_msg = 'Missing query variable name, empty "$" is not allowed.'
-        raise NameError(missing_msg)
+        if query_var_name.isidentifier():
+            ip = get_ipython()
+            query = ip.user_ns.get(query_var_name, ip)  # ip serves as a sentinel
 
-    if query_var_name.isidentifier():
+            if query is ip:
+                raise NameError(
+                    f"Unknown query, variable {query_var_name} does not exist."
+                )
+            elif not isinstance(query, (str, bytes)):
+                raise TypeError(
+                    f"Query variable {query_var_name} must be a string "
+                    "or a bytes-like value."
+                )
+
+    if args.pyformat:
         ip = get_ipython()
-        query = ip.user_ns.get(query_var_name, ip)  # ip serves as a sentinel
-
-        if query is ip:
-            raise NameError(f"Unknown query, variable {query_var_name} does not exist.")
-        elif not isinstance(query, (str, bytes)):
-            raise TypeError(
-                f"Query variable {query_var_name} must be a string "
-                "or a bytes-like value."
-            )
+        query = bigquery_magics.pyformat.pyformat(query, ip.user_ns)
     return query
 
 
@@ -760,7 +904,7 @@ def _make_bqstorage_client(client, client_options):
 
     return client._ensure_bqstorage_client(
         client_options=client_options,
-        client_info=gapic_client_info.ClientInfo(user_agent=USER_AGENT),
+        client_info=gapic_client_info.ClientInfo(user_agent=_get_user_agent()),
     )
 
 

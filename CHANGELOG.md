@@ -1,5 +1,73 @@
 # Changelog
 
+## [0.10.3](https://github.com/googleapis/python-bigquery-magics/compare/v0.10.2...v0.10.3) (2025-08-21)
+
+
+### Bug Fixes
+
+* Convert property fields in graph visualization to strings before sending them to JavaScript ([#133](https://github.com/googleapis/python-bigquery-magics/issues/133)) ([f869a61](https://github.com/googleapis/python-bigquery-magics/commit/f869a61369801f1e6fee56d6dcb51b647d16df95))
+
+## [0.10.2](https://github.com/googleapis/python-bigquery-magics/compare/v0.10.1...v0.10.2) (2025-08-04)
+
+
+### Dependencies
+
+* Drop support for Python 3.7 and 3.8 ([#127](https://github.com/googleapis/python-bigquery-magics/issues/127)) ([2a8e9de](https://github.com/googleapis/python-bigquery-magics/commit/2a8e9debe32f4f406e41072ee56bb954656af3de))
+* Make graph features compatible with `spanner-graph-notebook >= 1.1.7` ([#131](https://github.com/googleapis/python-bigquery-magics/issues/131)) ([f6f6d70](https://github.com/googleapis/python-bigquery-magics/commit/f6f6d70f575113e192107dce13a0f93b853b0ad3))
+
+## [0.10.1](https://github.com/googleapis/python-bigquery-magics/compare/v0.10.0...v0.10.1) (2025-07-07)
+
+
+### Dependencies
+
+* Move spanner-graph-notebook back to version 1.1.6 ([#126](https://github.com/googleapis/python-bigquery-magics/issues/126)) ([17ee695](https://github.com/googleapis/python-bigquery-magics/commit/17ee6956c8fec740440836609a9106e900b63074))
+
+## [0.10.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.9.0...v0.10.0) (2025-05-16)
+
+
+### Features
+
+* Instrument vscode, jupyter and 3p plugin usage ([#115](https://github.com/googleapis/python-bigquery-magics/issues/115)) ([0dd163f](https://github.com/googleapis/python-bigquery-magics/commit/0dd163f3e5a2627e21b7d2d91ad1eefcd662b7a0))
+
+## [0.9.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.8.1...v0.9.0) (2025-03-26)
+
+
+### Features
+
+* Add --pyformat option to use Python string formatting ([#111](https://github.com/googleapis/python-bigquery-magics/issues/111)) ([bd15a5b](https://github.com/googleapis/python-bigquery-magics/commit/bd15a5b941d14212c6bfaad84b0bc4cfd3220a0f))
+
+## [0.8.1](https://github.com/googleapis/python-bigquery-magics/compare/v0.8.0...v0.8.1) (2025-03-21)
+
+
+### Bug Fixes
+
+* Remove setup.cfg configuration for creating universal wheels ([#106](https://github.com/googleapis/python-bigquery-magics/issues/106)) ([fe3ec29](https://github.com/googleapis/python-bigquery-magics/commit/fe3ec29fefb7ca9195484d13f2bf15c65cf20614))
+
+
+### Dependencies
+
+* Bump minimum required version of spanner-graph-notebook to 1.1.5 ([#110](https://github.com/googleapis/python-bigquery-magics/issues/110)) ([756ac0d](https://github.com/googleapis/python-bigquery-magics/commit/756ac0d0910a0622aee88ed558886456311976e9))
+
+## [0.8.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.7.0...v0.8.0) (2025-03-13)
+
+
+### Features
+
+* Fix graph visualization to work with latest spanner-graph-notebook code; also, allow visualization when only some columns are json. ([#102](https://github.com/googleapis/python-bigquery-magics/issues/102)) ([c33297c](https://github.com/googleapis/python-bigquery-magics/commit/c33297cf2a1db9a0bd2e8c078be1e06239122459))
+* Support multiple columns in graph visualization ([#100](https://github.com/googleapis/python-bigquery-magics/issues/100)) ([dbb6442](https://github.com/googleapis/python-bigquery-magics/commit/dbb64426dd617697785bccf15d98c32f8217c33e))
+
+## [0.7.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.6.0...v0.7.0) (2025-03-11)
+
+
+### Features
+
+* Support visualization of graph queries by adding the --graph argument. ([#94](https://github.com/googleapis/python-bigquery-magics/issues/94)) ([3c054f5](https://github.com/googleapis/python-bigquery-magics/commit/3c054f5e27b5097c18899ff732fccebdf36b47e6))
+
+
+### Bug Fixes
+
+* Resolve issue where pre-release versions of dependencies are installed ([#97](https://github.com/googleapis/python-bigquery-magics/issues/97)) ([79c59e7](https://github.com/googleapis/python-bigquery-magics/commit/79c59e7b8ceba6f2be1fbe16d12b69b5a0b4d774))
+
 ## [0.6.0](https://github.com/googleapis/python-bigquery-magics/compare/v0.5.0...v0.6.0) (2025-02-12)
 
 
