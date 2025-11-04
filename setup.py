@@ -36,6 +36,8 @@ dependencies = [
     "packaging >= 20.0.0",
     "pandas>=1.2.0",
     "pyarrow >= 3.0.0",
+    # See https://arrow.apache.org/release/22.0.0.html
+    "pyarrow >= 22.0.0; python_version >= '3.14'",
     "pydata-google-auth >=1.5.0",
     "tqdm >= 4.7.4, <5.0.0",
 ]
@@ -110,6 +112,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Operating System :: OS Independent",
         "Topic :: Internet",
     ],
