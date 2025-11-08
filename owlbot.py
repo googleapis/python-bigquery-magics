@@ -38,10 +38,11 @@ extras_by_python = {
     "3.11": [],
     "3.12": extras_storage + extras_spanner,
     "3.13": extras_bf,
+    "3.14": extras_bf,
 }
 templated_files = common.py_library(
-    unit_test_python_versions=["3.9", "3.11", "3.12", "3.13"],
-    system_test_python_versions=["3.9", "3.11", "3.12", "3.13"],
+    unit_test_python_versions=["3.9", "3.11", "3.12", "3.13", "3.14"],
+    system_test_python_versions=["3.9", "3.11", "3.12", "3.13", "3.14"],
     cov_level=100,
     unit_test_extras_by_python=extras_by_python,
     unit_test_external_dependencies=["google-cloud-testutils"],
@@ -50,7 +51,7 @@ templated_files = common.py_library(
         "pandas": "https://pandas.pydata.org/pandas-docs/stable/",
         "pydata-google-auth": "https://pydata-google-auth.readthedocs.io/en/latest/",
     },
-    default_python_version="3.10",
+    default_python_version="3.14",
 )
 s.move(
     templated_files,
