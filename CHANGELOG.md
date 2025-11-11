@@ -4,6 +4,13 @@
 
 [1]: https://pypi.org/project/bigquery-magics/#history
 
+## [0.11.0](https://github.com/googleapis/google-cloud-python/compare/bigquery-magics-v0.10.3...bigquery-magics-v0.11.0) (2025-11-11)
+
+
+### Features
+
+* some feature ([fd3c378b48342c43f1eefb1342ee4a441f104559](https://github.com/googleapis/google-cloud-python/commit/fd3c378b48342c43f1eefb1342ee4a441f104559))
+
 ## [0.10.3](https://github.com/googleapis/python-bigquery-magics/compare/v0.10.2...v0.10.3) (2025-08-21)
 
 
