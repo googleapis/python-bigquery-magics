@@ -52,7 +52,7 @@ extras = {
         # grpc.Channel.close() method isn't added until 1.32.0.
         # https://github.com/grpc/grpc/pull/15254
         "grpcio >= 1.47.0, < 2.0.0",
-        "grpcio >= 1.49.1, < 2.0.0; python_version>='3.11'",
+        "grpcio >= 1.49.1, < 2.0.0; python_version >= '3.11' and python_version < '3.14'",
         "grpcio >= 1.75.1, < 2.0.0; python_version >= '3.14'",
     ],
     "bigframes": ["bigframes >= 1.17.0"],
