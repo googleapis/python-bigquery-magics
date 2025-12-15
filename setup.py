@@ -53,6 +53,7 @@ extras = {
         # https://github.com/grpc/grpc/pull/15254
         "grpcio >= 1.47.0, < 2.0.0",
         "grpcio >= 1.49.1, < 2.0.0; python_version>='3.11'",
+        "grpcio >= 1.75.1, < 2.0.0; python_version >= '3.14'",
     ],
     "bigframes": ["bigframes >= 1.17.0"],
     "geopandas": ["geopandas >= 1.0.1"],
@@ -110,6 +111,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Operating System :: OS Independent",
         "Topic :: Internet",
     ],
