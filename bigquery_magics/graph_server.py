@@ -166,6 +166,7 @@ class GraphServer:
         self.port = None
         self.url = None
         self._server = None
+        self.query_result = None
 
     def build_route(self, endpoint):
         """
@@ -251,7 +252,9 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_post_query(self):
         data = self.parse_post_data()
-        response = convert_graph_data(query_results=json.loads(data["params"]))
+
+        query_results = json.loads(graph_server.query_result.to_json())
+        response = convert_graph_data(query_results=query_results)
         self.do_data_response(response)
 
     def handle_post_node_expansion(self):

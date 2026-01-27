@@ -697,11 +697,13 @@ def _add_graph_widget(query_result):
             singleton_server_thread = graph_server.graph_server.init()
         port = graph_server.graph_server.port
 
+    graph_server.graph_server.query_result = query_result
+
     # Create html to invoke the graph server
     html_content = generate_visualization_html(
         query="placeholder query",
         port=port,
-        params=query_result.to_json().replace("\\", "\\\\").replace('"', '\\"'),
+        params="{}",
     )
     IPython.display.display(IPython.core.display.HTML(html_content))
 
