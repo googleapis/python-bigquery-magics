@@ -251,8 +251,6 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
         self.do_data_response({"your_request": data})
 
     def handle_post_query(self):
-        data = self.parse_post_data()
-
         query_results = json.loads(graph_server.query_result.to_json())
         response = convert_graph_data(query_results=query_results)
         self.do_data_response(response)
