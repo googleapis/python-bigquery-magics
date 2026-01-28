@@ -633,8 +633,9 @@ def _handle_result(result, args):
 
 
 def _colab_query_callback(query: str, params: str):
+    query_results = json.loads(graph_server.graph_server.query_result.to_json())
     return IPython.core.display.JSON(
-        graph_server.convert_graph_data(query_results=json.loads(params))
+        graph_server.convert_graph_data(query_results=query_results)
     )
 
 
