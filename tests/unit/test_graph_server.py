@@ -15,6 +15,7 @@
 import json
 import unittest
 
+import pandas as pd
 import pytest
 import requests
 
@@ -469,18 +470,14 @@ class TestGraphServer(unittest.TestCase):
     @pytest.mark.skipif(
         graph_visualization is None, reason="Requires `spanner-graph-notebook`"
     )
-    def test_post_query(self):
+    def test_post_query(self):        
         self.assertTrue(self.server_thread.is_alive())
+        graph_server.graph_server.query_result = pd.DataFrame([json.dumps(row_alex_owns_account)], columns=["result"])
         route = graph_server.graph_server.build_route(
             graph_server.GraphServer.endpoints["post_query"]
         )
 
-        data = {
-            "result": {
-                "0": json.dumps(row_alex_owns_account),
-            }
-        }
-        response = requests.post(route, json={"params": json.dumps(data)})
+        response = requests.post(route, json={"params": "{}"})
         self.assertEqual(response.status_code, 200)
         response_data = response.json()["response"]
 

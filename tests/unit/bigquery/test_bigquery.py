@@ -680,18 +680,10 @@ def test_bigquery_graph_json_result(monkeypatch):
         html_content = display_mock.call_args_list[0][0][0].data
         assert "<script>" in html_content
         assert "</script>" in html_content
-        # Verify that the query results are embedded into the HTML, allowing them to be visualized.
-        # Due to escaping, it is not possible check for graph_json_rows exactly, so we check for a few
-        # sentinel strings within the query results, instead.
+        # Sanity check that query results are not embedded into the HTML.
         assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" in html_content
+            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" not in html_content
         )  # identifier in 1st row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQY=" in html_content
-        )  # identifier in 2nd row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQQ=" in html_content
-        )  # identifier in 3rd row of query result
 
         # Make sure we can run a second graph query, after the graph server is already running.
         try:
@@ -704,18 +696,6 @@ def test_bigquery_graph_json_result(monkeypatch):
         html_content = display_mock.call_args_list[0][0][0].data
         assert "<script>" in html_content
         assert "</script>" in html_content
-        # Verify that the query results are embedded into the HTML, allowing them to be visualized.
-        # Due to escaping, it is not possible check for graph_json_rows exactly, so we check for a few
-        # sentinel strings within the query results, instead.
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" in html_content
-        )  # identifier in 1st row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQY=" in html_content
-        )  # identifier in 2nd row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQQ=" in html_content
-        )  # identifier in 3rd row of query result
 
     assert bqstorage_mock.called  # BQ storage client was used
     assert isinstance(return_value, pandas.DataFrame)
@@ -791,18 +771,10 @@ def test_bigquery_graph_colab(monkeypatch):
         html_content = display_mock.call_args_list[0][0][0].data
         assert "<script>" in html_content
         assert "</script>" in html_content
-        # Verify that the query results are embedded into the HTML, allowing them to be visualized.
-        # Due to escaping, it is not possible check for graph_json_rows exactly, so we check for a few
-        # sentinel strings within the query results, instead.
+        # Verify that the query results are not embedded into the HTML.
         assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" in html_content
+            "mUZpbkdyYXBoLlBlcnNvbgB4kQI=" not in html_content
         )  # identifier in 1st row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQY=" in html_content
-        )  # identifier in 2nd row of query result
-        assert (
-            "mUZpbkdyYXBoLlBlcnNvbgB4kQQ=" in html_content
-        )  # identifier in 3rd row of query result
 
         # Make sure we actually used colab path, not GraphServer path.
         assert sys.modules["google.colab"].output.register_callback.called
@@ -818,6 +790,7 @@ def test_bigquery_graph_colab(monkeypatch):
     reason="Requires `spanner-graph-notebook` and `google-cloud-bigquery-storage`",
 )
 def test_colab_query_callback():
+    graph_server.graph_server.query_result = pandas.DataFrame([], columns=["result"])
     result = bigquery_magics.bigquery._colab_query_callback(
         "query", json.dumps({"result": {}})
     )
