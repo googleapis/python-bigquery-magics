@@ -470,9 +470,11 @@ class TestGraphServer(unittest.TestCase):
     @pytest.mark.skipif(
         graph_visualization is None, reason="Requires `spanner-graph-notebook`"
     )
-    def test_post_query(self):        
+    def test_post_query(self):
         self.assertTrue(self.server_thread.is_alive())
-        graph_server.graph_server.query_result = pd.DataFrame([json.dumps(row_alex_owns_account)], columns=["result"])
+        graph_server.graph_server.query_result = pd.DataFrame(
+            [json.dumps(row_alex_owns_account)], columns=["result"]
+        )
         route = graph_server.graph_server.build_route(
             graph_server.GraphServer.endpoints["post_query"]
         )
