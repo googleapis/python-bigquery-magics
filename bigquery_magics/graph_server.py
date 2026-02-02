@@ -19,6 +19,10 @@ import socketserver
 import threading
 from typing import Any, Dict, List
 
+from google.cloud import bigquery
+
+from bigquery_magics import core
+
 
 def execute_node_expansion(params, request):
     return {"error": "Node expansion not yet implemented"}
@@ -251,7 +255,25 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_post_query(self):
         data = self.parse_post_data()
-        response = convert_graph_data(query_results=json.loads(data["params"]))
+        params = json.loads(data["params"])
+
+        query_results = None
+        if "query_result" in params:
+            query_results = params["query_result"]
+        else:
+            bq_client = core.create_bq_client(
+                params["args"]["project"],
+                params["args"]["bigquery_api_endpoint"],
+                params["args"]["location"],
+            )
+
+            table_ref = bigquery.TableReference.from_api_repr(
+                params["destination_table"]
+            )
+            query_results = json.loads(
+                bq_client.list_rows(table_ref).to_dataframe().to_json()
+            )
+        response = convert_graph_data(query_results=query_results)
         self.do_data_response(response)
 
     def handle_post_node_expansion(self):

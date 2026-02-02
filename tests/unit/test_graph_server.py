@@ -14,7 +14,9 @@
 
 import json
 import unittest
+from unittest import mock
 
+import pandas as pd
 import pytest
 import requests
 
@@ -476,14 +478,59 @@ class TestGraphServer(unittest.TestCase):
         )
 
         data = {
-            "result": {
-                "0": json.dumps(row_alex_owns_account),
+            "query_result": {
+                "result": {
+                    "0": json.dumps(row_alex_owns_account),
+                }
             }
         }
         response = requests.post(route, json={"params": json.dumps(data)})
         self.assertEqual(response.status_code, 200)
         response_data = response.json()["response"]
 
+        self.assertEqual(len(response_data["nodes"]), 2)
+        self.assertEqual(len(response_data["edges"]), 1)
+
+        _validate_nodes_and_edges(response.json())
+
+        self.assertEqual(
+            response_data["query_result"], {"result": [row_alex_owns_account_converted]}
+        )
+        self.assertIsNone(response_data["schema"])
+
+    @pytest.mark.skipif(
+        graph_visualization is None, reason="Requires `spanner-graph-notebook`"
+    )
+    def test_post_query_from_table(self):
+        self.assertTrue(self.server_thread.is_alive())
+        route = graph_server.graph_server.build_route(
+            graph_server.GraphServer.endpoints["post_query"]
+        )
+
+        params = {
+            "destination_table": {"projectId": "p", "datasetId": "d", "tableId": "t"},
+            "args": {
+                "project": "p",
+                "bigquery_api_endpoint": "e",
+                "location": "l",
+            },
+        }
+
+        with mock.patch("bigquery_magics.core.create_bq_client") as mock_create:
+            mock_client = mock.Mock()
+            mock_create.return_value = mock_client
+            mock_df = pd.DataFrame(
+                [json.dumps(row_alex_owns_account)], columns=["result"]
+            )
+            mock_client.list_rows.return_value.to_dataframe.return_value = mock_df
+
+            response = requests.post(route, json={"params": json.dumps(params)})
+            self.assertEqual(response.status_code, 200)
+
+            mock_create.assert_called_once_with("p", "e", "l")
+            mock_client.list_rows.assert_called_once()
+
+        response_data = response.json()["response"]
         self.assertEqual(len(response_data["nodes"]), 2)
         self.assertEqual(len(response_data["edges"]), 1)
 
