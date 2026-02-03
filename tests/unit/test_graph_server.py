@@ -211,7 +211,7 @@ def _validate_nodes_and_edges(result):
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_no_rows():
-    result = graph_server.convert_graph_data({"result": {}})
+    result = graph_server._convert_graph_data({"result": {}})
     assert result == {
         "response": {
             "edges": [],
@@ -226,7 +226,7 @@ def test_convert_one_column_no_rows():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_one_row():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "result": {
                 "0": json.dumps(row_alex_owns_account),
@@ -249,7 +249,7 @@ def test_convert_one_column_one_row():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_two_rows_null_json():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "result": {
                 "0": None,
@@ -276,7 +276,7 @@ def test_convert_one_column_two_rows_null_json():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_column_two_rows():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "result": {
                 "0": json.dumps(row_alex_owns_account_converted),
@@ -300,7 +300,7 @@ def test_convert_one_column_two_rows():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_one_row_two_columns():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "col1": {
                 "0": json.dumps(row_alex_owns_account_converted),
@@ -329,7 +329,7 @@ def test_convert_one_row_two_columns():
 def test_convert_nongraph_json():
     # If we have valid json that doesn't represent a graph, we don't expect to get nodes and edges,
     # but we should at least have row data, allowing the tabular view to work.
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "result": {
                 "0": json.dumps({"foo": 1, "bar": 2}),
@@ -348,7 +348,7 @@ def test_convert_nongraph_json():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_outer_key_not_string():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             0: {
                 "0": json.dumps({"foo": 1, "bar": 2}),
@@ -362,7 +362,7 @@ def test_convert_outer_key_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_outer_value_not_dict():
-    result = graph_server.convert_graph_data({"result": 0})
+    result = graph_server._convert_graph_data({"result": 0})
     assert result == {"error": "Expected outer value to be dict, got <class 'int'>"}
 
 
@@ -370,7 +370,7 @@ def test_convert_outer_value_not_dict():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_inner_value_not_string():
-    result = graph_server.convert_graph_data(
+    result = graph_server._convert_graph_data(
         {
             "col1": {
                 "0": json.dumps(row_alex_owns_account),
@@ -398,7 +398,7 @@ def test_convert_inner_value_not_string():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_empty_dict():
-    result = graph_server.convert_graph_data({})
+    result = graph_server._convert_graph_data({})
     assert result == {
         "response": {
             "nodes": [],
@@ -413,7 +413,7 @@ def test_convert_empty_dict():
     graph_visualization is None, reason="Requires `spanner-graph-notebook`"
 )
 def test_convert_wrong_row_index():
-    result0 = graph_server.convert_graph_data(
+    result0 = graph_server._convert_graph_data(
         {
             "result": {
                 "0": json.dumps(row_alex_owns_account),
@@ -422,7 +422,7 @@ def test_convert_wrong_row_index():
     )
 
     # Changing the index should not impact the result.
-    result1 = graph_server.convert_graph_data(
+    result1 = graph_server._convert_graph_data(
         {
             "result": {
                 "1": json.dumps(row_alex_owns_account),

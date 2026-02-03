@@ -58,7 +58,7 @@ def _stringify_properties(d: Any) -> Any:
         return _stringify_value(d)
 
 
-def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
+def _convert_graph_data(query_results: Dict[str, Dict[str, str]]):
     """
     Converts graph data to the form expected by the visualization framework.
 
@@ -145,6 +145,24 @@ def convert_graph_data(query_results: Dict[str, Dict[str, str]]):
         }
     except Exception as e:
         return {"error": getattr(e, "message", str(e))}
+
+
+def convert_graph_params(params: Dict[str, Any]):
+    query_results = None
+    if "query_result" in params:
+        query_results = params["query_result"]
+    else:
+        bq_client = core.create_bq_client(
+            params["args"]["project"],
+            params["args"]["bigquery_api_endpoint"],
+            params["args"]["location"],
+        )
+
+        table_ref = bigquery.TableReference.from_api_repr(params["destination_table"])
+        query_results = json.loads(
+            bq_client.list_rows(table_ref).to_dataframe().to_json()
+        )
+    return _convert_graph_data(query_results=query_results)
 
 
 class GraphServer:
@@ -257,23 +275,7 @@ class GraphServerHandler(http.server.SimpleHTTPRequestHandler):
         data = self.parse_post_data()
         params = json.loads(data["params"])
 
-        query_results = None
-        if "query_result" in params:
-            query_results = params["query_result"]
-        else:
-            bq_client = core.create_bq_client(
-                params["args"]["project"],
-                params["args"]["bigquery_api_endpoint"],
-                params["args"]["location"],
-            )
-
-            table_ref = bigquery.TableReference.from_api_repr(
-                params["destination_table"]
-            )
-            query_results = json.loads(
-                bq_client.list_rows(table_ref).to_dataframe().to_json()
-            )
-        response = convert_graph_data(query_results=query_results)
+        response = convert_graph_params(params)
         self.do_data_response(response)
 
     def handle_post_node_expansion(self):
