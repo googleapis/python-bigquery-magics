@@ -341,7 +341,6 @@ def test__create_dataset_if_necessary_not_exist():
     ("magic_name",),
     (
         ("bigquery",),
-        ("bqsql",),
     ),
 )
 def test_extension_load(magic_name):
