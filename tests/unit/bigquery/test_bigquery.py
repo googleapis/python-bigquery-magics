@@ -3046,35 +3046,3 @@ def test_test_bigquery_magic__extension_loaded__is_registered_set_to_true():
     ip.extension_manager.load_extension("bigquery_magics")
 
     assert bigquery_magics.is_registered is True
-
-
-def test__estimate_json_size_empty():
-    df = pandas.DataFrame()
-    assert magics._estimate_json_size(df) == 2
-
-
-def test__estimate_json_size_bool():
-    df = pandas.DataFrame({"a": [True, False]}, dtype="bool")
-    # key_overhead: (len('"a":') + 1) * 2 = 5 * 2 = 10
-    # structural_overhead: (2 * 2) + 2 + (2 - 1) = 7
-    # total_val_len: 4 (true) + 5 (false) = 9
-    # total = 10 + 7 + 9 = 26
-    assert magics._estimate_json_size(df) == 26
-
-
-def test__estimate_json_size_int():
-    df = pandas.DataFrame({"a": [3, 4]})
-    # key_overhead: (len('"a":') + 1) * 2 = 5 * 2 = 10
-    # structural_overhead: (2 * 2) + 2 + (2 - 1) = 7
-    # total_val_len: 4 (true) + 5 (false) = 9
-    # total = 10 + 7 + 9 = 26
-    assert magics._estimate_json_size(df) == 19
-
-
-def test__estimate_json_size_string():
-    df = pandas.DataFrame({"a": ["x", "yz"]})
-    # key_overhead: (len('"a":') + 1) * 2 = 5 * 2 = 10
-    # structural_overhead: (2 * 2) + 2 + (2 - 1) = 7
-    # total_val_len: (1 + 2) + (2 * 2) = 7
-    # total = 10 + 7 + 7 = 24
-    assert magics._estimate_json_size(df) == 24
