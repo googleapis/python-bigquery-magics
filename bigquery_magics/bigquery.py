@@ -629,8 +629,8 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
 singleton_server_thread: threading.Thread = None
 
 
-MAX_GRAPH_VISUALIZATION_SIZE = 5000000
-MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100000
+MAX_GRAPH_VISUALIZATION_SIZE = 100000000#2000000
+MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100000000 #100000
 
 
 def _estimate_json_size(df: pandas.DataFrame) -> int:
@@ -712,7 +712,10 @@ def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any)
         "location": args.location,
     }
 
-    estimated_size = _estimate_json_size(query_result)
+    estimated_size = query_result.memory_usage(index=True, deep=True).sum()
+    #old_estimated_size = _estimate_json_size(query_result)
+    #actual_size = len(query_result.to_json())
+    #raise ValueError(f'Estimated size changing from {old_estimated_size} to {estimated_size} (actual size: {actual_size})')
     if estimated_size > MAX_GRAPH_VISUALIZATION_SIZE:
         IPython.display.display(
             IPython.core.display.HTML(
