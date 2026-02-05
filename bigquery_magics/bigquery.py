@@ -671,7 +671,148 @@ def _estimate_json_size(df: pandas.DataFrame) -> int:
     return int(key_overhead + structural_overhead + total_val_len)
 
 
-def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any):
+def _convert_schema(schema_json: str) -> str:
+    """
+    Converts a JSON string from the BigQuery schema format to the format
+    expected by the visualization framework.
+
+    Args:
+        schema_json: The input JSON string in the BigQuery schema format.
+
+    Returns:
+        The converted JSON string in the visualization framework format.
+    """
+    data = json.loads(schema_json)
+
+    graph_id = data.get("propertyGraphReference", {}).get(
+        "propertyGraphId", "SampleGraph"
+    )
+
+    output = {
+        "catalog": "",
+        "name": graph_id,
+        "schema": "",
+        "labels": [],
+        "nodeTables": [],
+        "edgeTables": [],
+        "propertyDeclarations": [],
+    }
+
+    labels_dict = {}  # name -> set of property names
+    props_dict = {}  # name -> type
+
+    def process_table(table, kind):
+        name = table.get("name")
+        base_table_name = table.get("dataSourceTable", {}).get("tableId")
+        key_columns = table.get("keyColumns", [])
+
+        label_names = []
+        property_definitions = []
+
+        for lp in table.get("labelAndProperties", []):
+            label = lp.get("label")
+            label_names.append(label)
+
+            if label not in labels_dict:
+                labels_dict[label] = set()
+
+            for prop in lp.get("properties", []):
+                prop_name = prop.get("name")
+                prop_type = prop.get("dataType", {}).get("typeKind")
+                prop_expr = prop.get("expression")
+
+                labels_dict[label].add(prop_name)
+                props_dict[prop_name] = prop_type
+
+                property_definitions.append(
+                    {
+                        "propertyDeclarationName": prop_name,
+                        "valueExpressionSql": prop_expr,
+                    }
+                )
+
+        entry = {
+            "name": name,
+            "baseTableName": base_table_name,
+            "kind": kind,
+            "labelNames": label_names,
+            "keyColumns": key_columns,
+            "propertyDefinitions": property_definitions,
+        }
+
+        if kind == "EDGE":
+            src = table.get("sourceNodeReference", {})
+            dst = table.get("destinationNodeReference", {})
+
+            entry["sourceNodeTable"] = {
+                "nodeTableName": src.get("nodeTable"),
+                "edgeTableColumns": src.get("edgeTableColumns"),
+                "nodeTableColumns": src.get("nodeTableColumns"),
+            }
+            entry["destinationNodeTable"] = {
+                "nodeTableName": dst.get("nodeTable"),
+                "edgeTableColumns": dst.get("edgeTableColumns"),
+                "nodeTableColumns": dst.get("nodeTableColumns"),
+            }
+
+        return entry
+
+    for nt in data.get("nodeTables", []):
+        output["nodeTables"].append(process_table(nt, "NODE"))
+
+    for et in data.get("edgeTables", []):
+        output["edgeTables"].append(process_table(et, "EDGE"))
+
+    for label_name, prop_names in labels_dict.items():
+        output["labels"].append(
+            {
+                "name": label_name,
+                "propertyDeclarationNames": sorted(list(prop_names)),
+            }
+        )
+
+    for prop_name, prop_type in props_dict.items():
+        output["propertyDeclarations"].append({"name": prop_name, "type": prop_type})
+
+    return json.dumps(output, indent=2)
+
+
+def _get_graph_name(query_text: str):
+    """Returns the name of the graph queried.
+
+    Supports GRAPH only, not GRAPH_TABLE.
+
+    Args:
+        query_text: The SQL query text.
+
+    Returns:
+        A (dataset_id, graph_id) tuple, or None if the graph name cannot be determined.
+    """
+    match = re.match(r"\s*GRAPH\s+(\S+)\.(\S+)", query_text, re.IGNORECASE)
+    if match:
+        return (match.group(1), match.group(2))
+    return None
+
+
+def _get_graph_schema(bq_client: bigquery.client.Client, query_text: str, query_job: bigquery.job.QueryJob):
+    graph_name_result = _get_graph_name(query_text)
+    if graph_name_result is None:
+        return None
+    dataset_id, graph_id = graph_name_result
+
+    info_schema_query = f'''
+        select PROPERTY_GRAPH_METADATA_JSON
+        FROM `{query_job.configuration.destination.project}.{dataset_id}`.INFORMATION_SCHEMA.PROPERTY_GRAPHS
+        WHERE PROPERTY_GRAPH_NAME = "{graph_id}"
+    '''
+    info_schema_results = bq_client.query(info_schema_query).to_dataframe()
+
+    if info_schema_results.shape == (1, 1):
+        return _convert_schema(info_schema_results.iloc[0, 0])
+    return None
+
+
+def _add_graph_widget(bq_client: Any, query_result: pandas.DataFrame, query_text: str, query_job: Any, args: Any):
     try:
         from spanner_graphs.graph_visualization import generate_visualization_html
     except ImportError as err:
@@ -723,6 +864,8 @@ def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any)
         )
         return
 
+    schema = _get_graph_schema(bq_client, query_text, query_job)
+    
     table_dict = {
         "projectId": query_job.configuration.destination.project,
         "datasetId": query_job.configuration.destination.dataset_id,
@@ -733,18 +876,14 @@ def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any)
     if estimated_size < MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE:
         params_dict["query_result"] = json.loads(query_result.to_json())
 
+    if schema is not None:
+        params_dict["schema"] = schema
+
     params_str = json.dumps(params_dict)
     html_content = generate_visualization_html(
         query="placeholder query",
         port=port,
         params=params_str.replace("\\", "\\\\").replace('"', '\\"'),
-    )
-    html_content = html_content.replace(
-        '"graph_visualization.Query"', '"bigquery.graph_visualization.Query"'
-    )
-    html_content = html_content.replace(
-        '"graph_visualization.NodeExpansion"',
-        '"bigquery.graph_visualization.NodeExpansion"',
     )
     html_content = html_content.replace(
         '"graph_visualization.Query"', '"bigquery.graph_visualization.Query"'
@@ -860,7 +999,7 @@ def _make_bq_query(
         result = result.to_dataframe(**dataframe_kwargs)
 
     if args.graph and _supports_graph_widget(result):
-        _add_graph_widget(result, query_job, args)
+        _add_graph_widget(bq_client, result, query, query_job, args)
     return _handle_result(result, args)
 
 

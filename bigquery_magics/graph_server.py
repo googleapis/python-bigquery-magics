@@ -58,7 +58,7 @@ def _stringify_properties(d: Any) -> Any:
         return _stringify_value(d)
 
 
-def _convert_graph_data(query_results: Dict[str, Dict[str, str]]):
+def _convert_graph_data(query_results: Dict[str, Dict[str, str]], schema: str):
     """
     Converts graph data to the form expected by the visualization framework.
 
@@ -136,15 +136,15 @@ def _convert_graph_data(query_results: Dict[str, Dict[str, str]]):
                 # These fields populate the graph result view.
                 "nodes": nodes_json,
                 "edges": edges_json,
-                # This populates the visualizer's schema view, but not yet implemented on the
-                # BigQuery side.
-                "schema": None,
+                # This populates the visualizer's schema view.
+                "schema": json.loads(schema) if schema is not None else None,
                 # This field is used to populate the visualizer's tabular view.
                 "query_result": tabular_data,
             }
         }
     except Exception as e:
-        return {"error": getattr(e, "message", str(e))}
+        raise
+        #return {"error": getattr(e, "message", str(e))}
 
 
 def convert_graph_params(params: Dict[str, Any]):
@@ -162,7 +162,7 @@ def convert_graph_params(params: Dict[str, Any]):
         query_results = json.loads(
             bq_client.list_rows(table_ref).to_dataframe().to_json()
         )
-    return _convert_graph_data(query_results=query_results)
+    return _convert_graph_data(query_results=query_results, schema=params.get("schema"))
 
 
 class GraphServer:
