@@ -527,7 +527,9 @@ class TestGraphServer(unittest.TestCase):
             response = requests.post(route, json={"params": json.dumps(params)})
             self.assertEqual(response.status_code, 200)
 
-            mock_create.assert_called_once_with("p", "e", "l")
+            mock_create.assert_called_once_with(
+                project="p", bigquery_api_endpoint="e", location="l"
+            )
             mock_client.list_rows.assert_called_once()
 
         response_data = response.json()["response"]
