@@ -153,9 +153,9 @@ def convert_graph_params(params: Dict[str, Any]):
         query_results = params["query_result"]
     else:
         bq_client = core.create_bq_client(
-            params["args"]["project"],
-            params["args"]["bigquery_api_endpoint"],
-            params["args"]["location"],
+            project=params["args"]["project"],
+            bigquery_api_endpoint=params["args"]["bigquery_api_endpoint"],
+            location=params["args"]["location"],
         )
 
         table_ref = bigquery.TableReference.from_api_repr(params["destination_table"])

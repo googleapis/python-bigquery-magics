@@ -546,7 +546,9 @@ def _query_with_pandas(query: str, params: List[Any], args: Any):
 
 def _create_clients(args: Any) -> Tuple[bigquery.Client, Any]:
     bq_client = core.create_bq_client(
-        args.project, args.bigquery_api_endpoint, args.location
+        project=args.project,
+        bigquery_api_endpoint=args.bigquery_api_endpoint,
+        location=args.location,
     )
 
     # Check and instantiate bq storage client
@@ -629,46 +631,8 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
 singleton_server_thread: threading.Thread = None
 
 
-MAX_GRAPH_VISUALIZATION_SIZE = 100000000#2000000
-MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100000000 #100000
-
-
-def _estimate_json_size(df: pandas.DataFrame) -> int:
-    """Approximates the length of df.to_json(orient='records')
-    without materializing the string.
-    """
-    num_rows, num_cols = df.shape
-    if num_rows == 0:
-        return 2  # "[]"
-
-    # 1. Key overhead: "column_name": (repeated for every row)
-    # Includes quotes, colon, and comma separator per field
-    key_overhead = sum(len(f'"{col}":') + 1 for col in df.columns) * num_rows
-
-    # 2. Row structural overhead: { } per row and [ ] for the list
-    # Plus commas between rows (num_rows - 1)
-    structural_overhead = (2 * num_rows) + 2 + (num_rows - 1)
-
-    # 3. Value lengths
-    total_val_len = 0
-    for col in df.columns:
-        series = df[col]
-
-        if pandas.api.types.is_bool_dtype(series):
-            # true (4) or false (5)
-            total_val_len += series.map({True: 4, False: 5}).sum()
-        elif pandas.api.types.is_numeric_dtype(series):
-            # Numeric values (no quotes). Sample for average length to save memory.
-            sample_size = min(len(series), 1000)
-            avg_len = series.sample(sample_size).astype(str).str.len().mean()
-            total_val_len += avg_len * num_rows
-        else:
-            # Strings/Objects: "value" + quotes (2) + rough escaping factor
-            # .str.len() is relatively memory-efficient
-            val_chars = series.astype(str).str.len().sum()
-            total_val_len += val_chars + (2 * num_rows)
-
-    return int(key_overhead + structural_overhead + total_val_len)
+MAX_GRAPH_VISUALIZATION_SIZE = 2_000_000
+MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100_000
 
 
 def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any):
@@ -713,9 +677,6 @@ def _add_graph_widget(query_result: pandas.DataFrame, query_job: Any, args: Any)
     }
 
     estimated_size = query_result.memory_usage(index=True, deep=True).sum()
-    #old_estimated_size = _estimate_json_size(query_result)
-    #actual_size = len(query_result.to_json())
-    #raise ValueError(f'Estimated size changing from {old_estimated_size} to {estimated_size} (actual size: {actual_size})')
     if estimated_size > MAX_GRAPH_VISUALIZATION_SIZE:
         IPython.display.display(
             IPython.core.display.HTML(

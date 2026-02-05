@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import copy
+
 from google.api_core import client_info
 from google.cloud import bigquery
 import IPython  # type: ignore
+
 from bigquery_magics import environment
 import bigquery_magics.config
 import bigquery_magics.version
@@ -41,7 +43,7 @@ def _get_user_agent():
     return " ".join(identities)
 
 
-def create_bq_client(project: str, bigquery_api_endpoint: str, location: str):
+def create_bq_client(*, project: str, bigquery_api_endpoint: str, location: str):
     """Creates a BigQuery client.
 
     Args:
