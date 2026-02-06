@@ -663,9 +663,10 @@ def _get_graph_schema(
     info_schema_query = f"""
         select PROPERTY_GRAPH_METADATA_JSON
         FROM `{query_job.configuration.destination.project}.{dataset_id}`.INFORMATION_SCHEMA.PROPERTY_GRAPHS
-        WHERE PROPERTY_GRAPH_NAME = "{graph_id}"
+        WHERE PROPERTY_GRAPH_NAME = @graph_id
     """
-    info_schema_results = bq_client.query(info_schema_query).to_dataframe()
+    job_config = bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter("graph_id", "STRING", graph_id)])
+    info_schema_results = bq_client.query(info_schema_query, job_config=job_config).to_dataframe()
 
     if info_schema_results.shape == (1, 1):
         return graph_server._convert_schema(info_schema_results.iloc[0, 0])
