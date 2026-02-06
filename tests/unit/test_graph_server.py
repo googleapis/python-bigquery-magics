@@ -709,7 +709,13 @@ def test_convert_schema_shared_label():
                 "labelAndProperties": [
                     {
                         "label": "Person",
-                        "properties": [{"name": "id", "dataType": {"typeKind": "INT64"}, "expression": "id"}],
+                        "properties": [
+                            {
+                                "name": "id",
+                                "dataType": {"typeKind": "INT64"},
+                                "expression": "id",
+                            }
+                        ],
                     }
                 ],
             },
@@ -719,10 +725,16 @@ def test_convert_schema_shared_label():
                 "labelAndProperties": [
                     {
                         "label": "Person",
-                        "properties": [{"name": "name", "dataType": {"typeKind": "STRING"}, "expression": "name"}],
+                        "properties": [
+                            {
+                                "name": "name",
+                                "dataType": {"typeKind": "STRING"},
+                                "expression": "name",
+                            }
+                        ],
                     }
                 ],
-            }
+            },
         ],
         "edgeTables": [],
     }
