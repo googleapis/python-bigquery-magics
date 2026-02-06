@@ -14,13 +14,13 @@
 
 """IPython Magics
 
-.. function:: ``%%bigquery`` or ``%%bqsql``
+.. function:: ``%%bigquery``
 
     IPython cell magic to run a query and display the result as a DataFrame
 
     .. code-block:: python
 
-        %%bqsql [<destination_var>] [--project <project>] [--use_legacy_sql]
+        %%bigquery [<destination_var>] [--project <project>] [--use_legacy_sql]
                    [--verbose] [--params <params>]
         <query>
 
@@ -290,7 +290,6 @@ def _create_dataset_if_necessary(client, dataset_id):
     action="store_true",
     default=False,
     help=(
-        "Sets query to use Legacy SQL instead of Standard SQL. Defaults to "
         "Standard SQL if this argument is not used."
     ),
 )
@@ -546,7 +545,9 @@ def _query_with_pandas(query: str, params: List[Any], args: Any):
 
 def _create_clients(args: Any) -> Tuple[bigquery.Client, Any]:
     bq_client = core.create_bq_client(
-        args.project, args.bigquery_api_endpoint, args.location
+        project=args.project,
+        bigquery_api_endpoint=args.bigquery_api_endpoint,
+        location=args.location,
     )
 
     # Check and instantiate bq storage client
@@ -629,8 +630,8 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
 singleton_server_thread: threading.Thread = None
 
 
-MAX_GRAPH_VISUALIZATION_SIZE = 5000000
-MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100000
+MAX_GRAPH_VISUALIZATION_SIZE = 5_000_000
+MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100_000
 
 
 def _estimate_json_size(df: pandas.DataFrame) -> int:
@@ -671,112 +672,6 @@ def _estimate_json_size(df: pandas.DataFrame) -> int:
     return int(key_overhead + structural_overhead + total_val_len)
 
 
-def _convert_schema(schema_json: str) -> str:
-    """
-    Converts a JSON string from the BigQuery schema format to the format
-    expected by the visualization framework.
-
-    Args:
-        schema_json: The input JSON string in the BigQuery schema format.
-
-    Returns:
-        The converted JSON string in the visualization framework format.
-    """
-    data = json.loads(schema_json)
-
-    graph_id = data.get("propertyGraphReference", {}).get(
-        "propertyGraphId", "SampleGraph"
-    )
-
-    output = {
-        "catalog": "",
-        "name": graph_id,
-        "schema": "",
-        "labels": [],
-        "nodeTables": [],
-        "edgeTables": [],
-        "propertyDeclarations": [],
-    }
-
-    labels_dict = {}  # name -> set of property names
-    props_dict = {}  # name -> type
-
-    def process_table(table, kind):
-        name = table.get("name")
-        base_table_name = table.get("dataSourceTable", {}).get("tableId")
-        key_columns = table.get("keyColumns", [])
-
-        label_names = []
-        property_definitions = []
-
-        for lp in table.get("labelAndProperties", []):
-            label = lp.get("label")
-            label_names.append(label)
-
-            if label not in labels_dict:
-                labels_dict[label] = set()
-
-            for prop in lp.get("properties", []):
-                prop_name = prop.get("name")
-                prop_type = prop.get("dataType", {}).get("typeKind")
-                prop_expr = prop.get("expression")
-
-                labels_dict[label].add(prop_name)
-                props_dict[prop_name] = prop_type
-
-                property_definitions.append(
-                    {
-                        "propertyDeclarationName": prop_name,
-                        "valueExpressionSql": prop_expr,
-                    }
-                )
-
-        entry = {
-            "name": name,
-            "baseTableName": base_table_name,
-            "kind": kind,
-            "labelNames": label_names,
-            "keyColumns": key_columns,
-            "propertyDefinitions": property_definitions,
-        }
-
-        if kind == "EDGE":
-            src = table.get("sourceNodeReference", {})
-            dst = table.get("destinationNodeReference", {})
-
-            entry["sourceNodeTable"] = {
-                "nodeTableName": src.get("nodeTable"),
-                "edgeTableColumns": src.get("edgeTableColumns"),
-                "nodeTableColumns": src.get("nodeTableColumns"),
-            }
-            entry["destinationNodeTable"] = {
-                "nodeTableName": dst.get("nodeTable"),
-                "edgeTableColumns": dst.get("edgeTableColumns"),
-                "nodeTableColumns": dst.get("nodeTableColumns"),
-            }
-
-        return entry
-
-    for nt in data.get("nodeTables", []):
-        output["nodeTables"].append(process_table(nt, "NODE"))
-
-    for et in data.get("edgeTables", []):
-        output["edgeTables"].append(process_table(et, "EDGE"))
-
-    for label_name, prop_names in labels_dict.items():
-        output["labels"].append(
-            {
-                "name": label_name,
-                "propertyDeclarationNames": sorted(list(prop_names)),
-            }
-        )
-
-    for prop_name, prop_type in props_dict.items():
-        output["propertyDeclarations"].append({"name": prop_name, "type": prop_type})
-
-    return json.dumps(output, indent=2)
-
-
 def _get_graph_name(query_text: str):
     """Returns the name of the graph queried.
 
@@ -794,25 +689,33 @@ def _get_graph_name(query_text: str):
     return None
 
 
-def _get_graph_schema(bq_client: bigquery.client.Client, query_text: str, query_job: bigquery.job.QueryJob):
+def _get_graph_schema(
+    bq_client: bigquery.client.Client, query_text: str, query_job: bigquery.job.QueryJob
+):
     graph_name_result = _get_graph_name(query_text)
     if graph_name_result is None:
         return None
     dataset_id, graph_id = graph_name_result
 
-    info_schema_query = f'''
+    info_schema_query = f"""
         select PROPERTY_GRAPH_METADATA_JSON
         FROM `{query_job.configuration.destination.project}.{dataset_id}`.INFORMATION_SCHEMA.PROPERTY_GRAPHS
         WHERE PROPERTY_GRAPH_NAME = "{graph_id}"
-    '''
+    """
     info_schema_results = bq_client.query(info_schema_query).to_dataframe()
 
     if info_schema_results.shape == (1, 1):
-        return _convert_schema(info_schema_results.iloc[0, 0])
+        return graph_server._convert_schema(info_schema_results.iloc[0, 0])
     return None
 
 
-def _add_graph_widget(bq_client: Any, query_result: pandas.DataFrame, query_text: str, query_job: Any, args: Any):
+def _add_graph_widget(
+    bq_client: Any,
+    query_result: pandas.DataFrame,
+    query_text: str,
+    query_job: Any,
+    args: Any,
+):
     try:
         from spanner_graphs.graph_visualization import generate_visualization_html
     except ImportError as err:
@@ -855,7 +758,7 @@ def _add_graph_widget(bq_client: Any, query_result: pandas.DataFrame, query_text
         "location": args.location,
     }
 
-    estimated_size = _estimate_json_size(query_result)
+    estimated_size = query_result.memory_usage(index=True, deep=True).sum()
     if estimated_size > MAX_GRAPH_VISUALIZATION_SIZE:
         IPython.display.display(
             IPython.core.display.HTML(
@@ -865,7 +768,7 @@ def _add_graph_widget(bq_client: Any, query_result: pandas.DataFrame, query_text
         return
 
     schema = _get_graph_schema(bq_client, query_text, query_job)
-    
+
     table_dict = {
         "projectId": query_job.configuration.destination.project,
         "datasetId": query_job.configuration.destination.dataset_id,
