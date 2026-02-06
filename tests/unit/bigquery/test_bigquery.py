@@ -1157,7 +1157,7 @@ def test_add_graph_widget_with_schema(monkeypatch):
         query_str = call_args[0]
         assert "INFORMATION_SCHEMA.PROPERTY_GRAPHS" in query_str
         assert "PROPERTY_GRAPH_NAME = @graph_id" in query_str
-        
+
         # Verify query parameter
         job_config = call_kwargs["job_config"]
         param = job_config.query_parameters[0]
