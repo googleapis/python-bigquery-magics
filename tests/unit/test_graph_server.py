@@ -668,7 +668,7 @@ def test_convert_schema():
     ]
 
     assert len(result["labels"]) == 2
-    labels = {l["name"]: l for l in result["labels"]}
+    labels = {label["name"]: label for label in result["labels"]}
     assert "Person" in labels
     assert "name" in labels["Person"]["propertyDeclarationNames"]
     assert "KNOWS" in labels
@@ -696,3 +696,42 @@ def test_convert_schema_empty():
     assert result["edgeTables"] == []
     assert result["labels"] == []
     assert result["propertyDeclarations"] == []
+
+
+def test_convert_schema_shared_label():
+    """Test _convert_schema where multiple tables share the same label."""
+    input_schema = {
+        "propertyGraphReference": {"propertyGraphId": "SharedLabelGraph"},
+        "nodeTables": [
+            {
+                "name": "PersonA",
+                "dataSourceTable": {"tableId": "TableA"},
+                "labelAndProperties": [
+                    {
+                        "label": "Person",
+                        "properties": [{"name": "id", "dataType": {"typeKind": "INT64"}, "expression": "id"}],
+                    }
+                ],
+            },
+            {
+                "name": "PersonB",
+                "dataSourceTable": {"tableId": "TableB"},
+                "labelAndProperties": [
+                    {
+                        "label": "Person",
+                        "properties": [{"name": "name", "dataType": {"typeKind": "STRING"}, "expression": "name"}],
+                    }
+                ],
+            }
+        ],
+        "edgeTables": [],
+    }
+
+    schema_json = json.dumps(input_schema)
+    result_json = graph_server._convert_schema(schema_json)
+    result = json.loads(result_json)
+
+    # Verify that the 'Person' label includes properties from both tables
+    labels = {l["name"]: l for l in result["labels"]}
+    assert "Person" in labels
+    assert set(labels["Person"]["propertyDeclarationNames"]) == {"id", "name"}
