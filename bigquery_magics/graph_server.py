@@ -164,7 +164,7 @@ def _convert_schema(schema_json: str) -> str:
     return json.dumps(output, indent=2)
 
 
-def _convert_graph_data(query_results: Dict[str, Dict[str, str]], schema: str = None):
+def _convert_graph_data(query_results: Dict[str, Dict[str, str]], schema: Dict = None):
     """
     Converts graph data to the form expected by the visualization framework.
 
@@ -185,7 +185,7 @@ def _convert_graph_data(query_results: Dict[str, Dict[str, str]], schema: str = 
                 for the current row/column. (Note: We only support graph
                 visualization for columns of type JSON).
         schema:
-            A JSON string containing the schema for the graph.
+            A dictionary containing the schema for the graph.
     """
     # Delay spanner imports until this function is called to avoid making
     # spanner-graph-notebook (and its dependencies) hard requirements for bigquery
@@ -245,7 +245,7 @@ def _convert_graph_data(query_results: Dict[str, Dict[str, str]], schema: str = 
                 "nodes": nodes_json,
                 "edges": edges_json,
                 # This populates the visualizer's schema view.
-                "schema": json.loads(schema) if schema is not None else None,
+                "schema": schema,
                 # This field is used to populate the visualizer's tabular view.
                 "query_result": tabular_data,
             }
@@ -269,8 +269,10 @@ def convert_graph_params(params: Dict[str, Any]):
         query_results = json.loads(
             bq_client.list_rows(table_ref).to_dataframe().to_json()
         )
+    schema_json = params.get("schema")
+    schema = json.loads(schema_json) if schema_json is not None else None
     return _convert_graph_data(
-        query_results=query_results, schema=params.get("schema")
+        query_results=query_results, schema=schema
     )
 
 
