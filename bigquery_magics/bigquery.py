@@ -630,7 +630,7 @@ def _colab_node_expansion_callback(request: dict, params_str: str):
 singleton_server_thread: threading.Thread = None
 
 
-MAX_GRAPH_VISUALIZATION_SIZE = 5_000_000
+MAX_GRAPH_VISUALIZATION_SIZE = 2_000_000
 MAX_GRAPH_VISUALIZATION_QUERY_RESULT_SIZE = 100_000
 
 
