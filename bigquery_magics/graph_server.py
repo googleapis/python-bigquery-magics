@@ -271,9 +271,7 @@ def convert_graph_params(params: Dict[str, Any]):
         )
     schema_json = params.get("schema")
     schema = json.loads(schema_json) if schema_json is not None else None
-    return _convert_graph_data(
-        query_results=query_results, schema=schema
-    )
+    return _convert_graph_data(query_results=query_results, schema=schema)
 
 
 class GraphServer:
