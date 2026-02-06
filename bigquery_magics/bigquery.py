@@ -290,6 +290,7 @@ def _create_dataset_if_necessary(client, dataset_id):
     action="store_true",
     default=False,
     help=(
+        "Sets query to use Legacy SQL instead of Standard SQL. Defaults to "
         "Standard SQL if this argument is not used."
     ),
 )
