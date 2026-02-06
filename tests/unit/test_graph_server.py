@@ -744,6 +744,6 @@ def test_convert_schema_shared_label():
     result = json.loads(result_json)
 
     # Verify that the 'Person' label includes properties from both tables
-    labels = {l["name"]: l for l in result["labels"]}
+    labels = {label["name"]: label for label in result["labels"]}
     assert "Person" in labels
     assert set(labels["Person"]["propertyDeclarationNames"]) == {"id", "name"}
