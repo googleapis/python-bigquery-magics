@@ -1153,9 +1153,16 @@ def test_add_graph_widget_with_schema(monkeypatch):
 
         # Verify schema was retrieved and converted
         assert bq_client.query.called
-        call_args = bq_client.query.call_args[0][0]
-        assert "INFORMATION_SCHEMA.PROPERTY_GRAPHS" in call_args
-        assert 'PROPERTY_GRAPH_NAME = "my_graph"' in call_args
+        call_args, call_kwargs = bq_client.query.call_args
+        query_str = call_args[0]
+        assert "INFORMATION_SCHEMA.PROPERTY_GRAPHS" in query_str
+        assert "PROPERTY_GRAPH_NAME = @graph_id" in query_str
+        
+        # Verify query parameter
+        job_config = call_kwargs["job_config"]
+        param = job_config.query_parameters[0]
+        assert param.name == "graph_id"
+        assert param.value == "my_graph"
 
         # Verify generate_visualization_html was called with the converted schema
         assert gen_html_mock.called
