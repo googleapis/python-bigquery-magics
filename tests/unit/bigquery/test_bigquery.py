@@ -241,6 +241,23 @@ def test__run_query_dry_run_without_errors_is_silent():
     assert len(captured.stdout) == 0
 
 
+def test__get_graph_name():
+    assert magics._get_graph_name("GRAPH foo.bar") == ("foo", "bar")
+    assert magics._get_graph_name("GRAPH `foo.bar`") is None
+    assert magics._get_graph_name("GRAPH `foo`.bar") is None
+    assert magics._get_graph_name("SELECT 1") is None
+
+
+def test__get_graph_schema_exception():
+    bq_client = mock.create_autospec(bigquery.Client, instance=True)
+    bq_client.query.side_effect = Exception("error")
+    query_text = "GRAPH foo.bar"
+    query_job = mock.Mock()
+    query_job.configuration.destination.project = "my-project"
+
+    assert magics._get_graph_schema(bq_client, query_text, query_job) is None
+
+
 @pytest.mark.skipif(
     bigquery_storage is None, reason="Requires `google-cloud-bigquery-storage`"
 )
