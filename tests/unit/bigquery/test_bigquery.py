@@ -631,9 +631,7 @@ def test_bigquery_graph_json_json_result(monkeypatch):
         display_mock.assert_called()
 
     assert bqstorage_mock.called  # BQ storage client was used
-    assert isinstance(return_value, pandas.DataFrame)
-    assert len(return_value) == len(result)  # verify row count
-    assert list(return_value) == list(result)  # verify column names
+    assert return_value is None
 
 
 @pytest.mark.skipif(
@@ -752,9 +750,7 @@ def test_bigquery_graph_json_result(monkeypatch):
         assert '\\"location\\": null' in html_content
 
     assert bqstorage_mock.called  # BQ storage client was used
-    assert isinstance(return_value, pandas.DataFrame)
-    assert len(return_value) == len(result)  # verify row count
-    assert list(return_value) == list(result)  # verify column names
+    assert return_value is None
 
 
 @pytest.mark.skipif(
@@ -1032,9 +1028,7 @@ def test_bigquery_graph_colab(monkeypatch):
         assert sys.modules["google.colab"].output.register_callback.called
 
     assert bqstorage_mock.called  # BQ storage client was used
-    assert isinstance(return_value, pandas.DataFrame)
-    assert len(return_value) == len(result)  # verify row count
-    assert list(return_value) == list(result)  # verify column names
+    assert return_value is None
 
 
 @pytest.mark.skipif(
