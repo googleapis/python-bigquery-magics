@@ -135,7 +135,7 @@ import bigquery_magics.pyformat
 try:
     from google.cloud import bigquery_storage  # type: ignore
 except ImportError:
-    bigquery_storage = None
+    bigquery_storage = None  # type: ignore
 
 try:
     import bigframes.pandas as bpd
